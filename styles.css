@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  --fondo: #202320;
+  --fondo-card: #292c29;
+  --azul: #7f95c6;
+  --azul-oscuro: #657bad;
+  --azul-claro: #aab9d9;
+  --crema: #f1f1eb;
+  --gris: #d8d9d5;
+  --negro: #171917;
+  --blanco: #f8f8f4;
+  --borde: rgba(255, 255, 255, 0.12);
+  --radio: 28px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--fondo);
+  color: var(--blanco);
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--azul-claro);
+  text-decoration: none;
+}
