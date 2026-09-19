@@ -37,3 +37,105 @@ a {
   color: var(--azul-claro);
   text-decoration: none;
 }
+
+.navbar {
+  align-items: center;
+  background: var(--fondo-card);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 0.8rem 1.25rem;
+}
+
+.marca {
+  align-items: center;
+  color: var(--blanco);
+  display: inline-flex;
+  font-weight: 700;
+  gap: 0.45rem;
+}
+
+.marca-gato,
+.hero-gato {
+  color: var(--azul-claro);
+  font-family: 'Caveat', cursive;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.menu {
+  align-items: center;
+  display: flex;
+  gap: 1.25rem;
+}
+
+.menu a {
+  color: var(--gris);
+  font-size: 0.9rem;
+}
+
+.menu a:hover,
+.menu a:focus-visible {
+  color: var(--blanco);
+}
+
+.hero {
+  align-items: center;
+  background: var(--azul-oscuro);
+  border-radius: var(--radio);
+  color: var(--blanco);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  min-height: 300px;
+  overflow: hidden;
+  padding: 3.5rem;
+  position: relative;
+}
+
+.hero-contenido {
+  max-width: 650px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-contenido h1 {
+  color: var(--blanco);
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+
+.hero-subtitulo {
+  color: var(--crema);
+  font-size: 1.1rem;
+}
+
+.hero-gato {
+  color: var(--crema);
+  font-size: 7rem;
+  transform: rotate(-12deg);
+  z-index: 1;
+}
+
+.doodle {
+  border: 2px solid var(--azul-claro);
+  border-radius: 50%;
+  opacity: 0.65;
+  position: absolute;
+}
+
+.doodle-uno {
+  height: 90px;
+  right: 8%;
+  top: 12%;
+  width: 90px;
+}
+
+.doodle-dos {
+  bottom: -35px;
+  height: 110px;
+  left: 42%;
+  width: 110px;
+}
