@@ -38,6 +38,87 @@ a {
   text-decoration: none;
 }
 
+.titulo-seccion {
+  color: var(--azul-claro);
+  font-size: 1.8rem;
+  margin-bottom: 1.25rem;
+}
+
+.sobre-card {
+  background: var(--crema);
+  border-radius: var(--radio);
+  color: var(--negro);
+  min-height: 280px;
+  overflow: hidden;
+  padding: 2.5rem 3rem;
+  position: relative;
+}
+
+.sobre-texto {
+  max-width: 720px;
+  position: relative;
+  z-index: 1;
+}
+
+.sobre-texto .titulo-seccion {
+  color: var(--azul-oscuro);
+}
+
+.sobre-texto p {
+  margin-bottom: 1rem;
+}
+
+.sobre-texto p:last-child {
+  margin-bottom: 0;
+}
+
+.sobre-circulo {
+  border: 2px solid var(--azul);
+  border-radius: 50%;
+  height: 130px;
+  position: absolute;
+  right: 7%;
+  top: -35px;
+  transform: rotate(15deg);
+  width: 130px;
+}
+
+.sobre-corazon {
+  bottom: 1.5rem;
+  color: var(--azul-oscuro);
+  font-family: 'Caveat', cursive;
+  font-size: 3.5rem;
+  position: absolute;
+  right: 10%;
+  transform: rotate(-15deg);
+}
+
+.habilidades {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none;
+}
+
+.habilidad {
+  background: var(--fondo-card);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  color: var(--gris);
+  padding: 0.85rem 1rem;
+  text-align: center;
+}
+
+.habilidad:nth-child(3n + 1) {
+  background: var(--azul-oscuro);
+  color: var(--blanco);
+}
+
+.habilidad:nth-child(3n + 2) {
+  background: var(--azul);
+  color: var(--negro);
+}
+
 .navbar {
   align-items: center;
   background: var(--fondo-card);
