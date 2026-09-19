@@ -41,6 +41,26 @@ a {
 }
 
 @media (max-width: 768px) {
+  .navbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .menu {
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+  }
+
+  .hero {
+    min-height: 260px;
+    padding: 2.5rem;
+  }
+
+  .hero-gato {
+    font-size: 5rem;
+  }
+
   body {
     padding: 1.5rem;
   }
@@ -63,6 +83,34 @@ a {
 }
 
 @media (max-width: 480px) {
+  .navbar {
+    border-radius: 20px;
+    padding: 0.75rem 1rem;
+  }
+
+  .menu {
+    gap: 0.5rem 0.75rem;
+  }
+
+  .menu a {
+    font-size: 0.82rem;
+  }
+
+  .hero {
+    align-items: flex-start;
+    border-radius: 20px;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 300px;
+    padding: 2rem 1.5rem;
+  }
+
+  .hero-gato {
+    align-self: flex-end;
+    font-size: 4.5rem;
+    margin-top: -1rem;
+  }
+
   body {
     padding: 1rem;
   }
