@@ -154,10 +154,36 @@ Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado 
 
 - **Cómo lo verifiqué:**
 
+  Verifiqué que `web` no puede resolver directamente a `db`:
+
   ```bash
   docker compose exec web getent hosts db
-  docker compose exec api getent hosts db
-  docker compose ps
   ```
-**Qué no me funcionó:**
-Inicialmente los tres servicios utilizaban la red predeterminada de Compose, por lo que web podía alcanzar directamente a db. La segmentación en dos redes eliminó ese acceso innecesario.
+  El comando no devolvió ninguna dirección. Luego comprobé su código de salida:
+  $LASTEXITCODE
+  2
+
+  Esto confirmó que web no puede resolver el nombre db.
+  Después comprobé que api sí puede resolver a db:
+  docker compose exec api getent hosts db
+  ```bash
+   Resultado:
+   172.19.0.2      db
+  ```
+  Finalmente comprobé los puertos de los servicios:
+  docker compose ps
+  ```bash
+  Resultado:
+  NAME           IMAGE        SERVICE   STATUS                   PORTS
+  perfil-api-1   perfil-api   api       Up (healthy)             3000/tcp
+  perfil-db-1    perfil-db    db        Up (healthy)             5432/tcp
+  perfil-web-1   perfil-web   web       Up (healthy)             0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+  ```
+  Con esto se comprobó que:
+- web no puede resolver db.
+- api sí puede resolver db.
+- api y db utilizan únicamente puertos internos.
+- solo web publica el puerto 8080 hacia el host.
+- los tres servicios permanecen en estado healthy.
+- Qué no me funcionó:
+  Inicialmente los tres servicios utilizaban la red predeterminada de Docker Compose, por lo que web podía alcanzar directamente a db. La solución fue separar los servicios en las redes frontend y backend, dejando a api como único servicio conectado a ambas.
