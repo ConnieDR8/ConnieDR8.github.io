@@ -1,5 +1,5 @@
 #Construye la imagen de la aplicación Node.js basada en la imagen oficial de Node.js 22
-FROM node:22-bookworm
+FROM node:22.23.3-bookworm-slim
 
 WORKDIR /app
 #Aprovecha la caché de npm para instalar las dependencias de producción debido a que package.json y package-lock.json no cambian con frecuencia
