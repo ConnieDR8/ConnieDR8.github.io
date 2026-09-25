@@ -105,3 +105,33 @@ Cada push a `main` despliega automáticamente con GitHub Pages.
 
 **Qué no me funcionó:**
 La configuración inicial usaba únicamente depends_on, lo cual definía el orden de inicio pero no garantizaba que PostgreSQL estuviera listo para aceptar conexiones. Por eso se reemplazó por condition: service_healthy.
+
+
+### Reto 3: Nadie es root
+
+- **Decisión:**
+  Este reto quedó parcialmente implementado durante B4, donde configuré los tres Dockerfiles para ejecutar sus servicios con usuarios sin privilegios: `nginx` en web, `node` en API y `postgres` en base de datos.
+
+- **Alternativas que evalué:**
+  - Ejecutar los contenedores como `root`: facilita ciertas operaciones, pero aumenta el impacto de una vulnerabilidad.
+  - Utilizar usuarios sin privilegios: reduce permisos dentro del contenedor y mejora el aislamiento.
+
+- **Por qué elegí esta:**
+  Porque los servicios no necesitan privilegios de root durante su ejecución normal. La web utiliza nginx-unprivileged y escucha en el puerto `8080`, evitando depender del puerto privilegiado `80`.
+
+- **Fuentes consultadas:**
+  - NGINX Unprivileged Container Image.
+  - Docker Docs — buenas prácticas para Dockerfiles.
+  - PostgreSQL Official Docker Image.
+
+- **Cómo lo verifiqué:**
+
+  ```bash
+  for s in web api db; do docker compose exec $s whoami; done
+  nginx
+  node
+  postgres
+  ```
+
+- **Qué no me funcionó:**
+Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado en su Dockerfile. Esto se corrigió durante B4 configurando USER postgres.
