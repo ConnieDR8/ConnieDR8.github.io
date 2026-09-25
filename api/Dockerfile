@@ -1,12 +1,23 @@
-#Construye la imagen de la aplicación Node.js basada en la imagen oficial de Node.js 22
-FROM node:22.23.3-bookworm-slim
+# Etapa de dependencias.
+FROM node:22.23.3-bookworm-slim AS dependencies
 
 WORKDIR /app
-#Aprovecha la caché de npm para instalar las dependencias de producción debido a que package.json y package-lock.json no cambian con frecuencia
+
+# Copia primero el manifiesto para aprovechar la caché de Docker.
 COPY package.json ./
+
 RUN npm install --omit=dev
 
-COPY app.js ./
+# Etapa final de ejecución.
+FROM node:22.23.3-bookworm-slim AS runtime
+
+WORKDIR /app
+
+# Copia únicamente las dependencias necesarias para producción.
+COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
+
+# Copia únicamente el código necesario para ejecutar la API.
+COPY --chown=node:node app.js ./
 
 USER node
 
