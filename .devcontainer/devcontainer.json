@@ -1,0 +1,24 @@
+{
+    "name": "LAB-02 Contenedores",
+  
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  
+    "features": {
+      "ghcr.io/devcontainers/features/docker-in-docker:4.1.1": {}
+    },
+  
+    "forwardPorts": [
+      8080
+    ],
+  
+    "portsAttributes": {
+      "8080": {
+        "label": "Perfil LAB-02",
+        "onAutoForward": "openPreview"
+      }
+    },
+  
+    "postStartCommand": "bash .devcontainer/start-lab.sh",
+  
+    "waitFor": "postStartCommand"
+  }
