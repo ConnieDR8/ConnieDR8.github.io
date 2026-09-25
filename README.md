@@ -135,3 +135,29 @@ La configuración inicial usaba únicamente depends_on, lo cual definía el orde
 
 - **Qué no me funcionó:**
 Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado en su Dockerfile. Esto se corrigió durante B4 configurando USER postgres.
+
+### Reto 4: Red segmentada
+
+- **Decisión:**
+  Separé los servicios en dos redes: `frontend` para `web` y `api`, y `backend` para `api` y `db`. La API es el único servicio conectado a ambas redes.
+
+- **Alternativas que evalué:**
+  - Una sola red para todos los servicios: más simple, pero permite que `web` pueda resolver directamente a `db`.
+  - Dos redes segmentadas: limita la comunicación a los servicios que realmente la necesitan.
+
+- **Por qué elegí esta:**
+  Aplica el principio de mínimo privilegio. `web` solo necesita comunicarse con `api`, mientras que únicamente `api` necesita acceso a PostgreSQL.
+
+- **Fuentes consultadas:**
+  - Docker Docs — Networking in Compose.
+  - Docker Docs — `ports` y redes definidas por el usuario.
+
+- **Cómo lo verifiqué:**
+
+  ```bash
+  docker compose exec web getent hosts db
+  docker compose exec api getent hosts db
+  docker compose ps
+  ```
+**Qué no me funcionó:**
+Inicialmente los tres servicios utilizaban la red predeterminada de Compose, por lo que web podía alcanzar directamente a db. La segmentación en dos redes eliminó ese acceso innecesario.
