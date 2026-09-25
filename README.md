@@ -74,8 +74,34 @@ Cada push a `main` despliega automáticamente con GitHub Pages.
 
   Los tres servicios quedaron `healthy` y la API continuó funcionando correctamente.
 
-- **Qué no me funcionó:**  
+- **Qué no me funcionó:**
   La primera imagen de la API era demasiado grande: tenía `412 MB` de contenido. Además, al buscar la caché de npm intenté acceder a `/root` usando el usuario `node` y obtuve un error de permisos. Repetí únicamente esa inspección con `--user root` y confirmé que la imagen final no conservaba dicha caché.
 
 
+### Reto 2: Arranque ordenado
 
+- **Decisión:**
+  Parte de este reto ya había sido implementada durante B3, porque el arranque automático en Codespaces necesitaba que los servicios estuvieran realmente listos antes de abrir la aplicación. Para ello se configuraron `healthcheck` en `db`, `api` y `web`, además de `depends_on` con `condition: service_healthy`.
+
+- **Alternativas que evalué:**
+  - Usar solo `depends_on`: simple, pero no espera a que el servicio esté realmente listo.
+  - Usar `healthcheck` + `service_healthy`: permite controlar la disponibilidad real de cada servicio.
+
+- **Por qué elegí esta:**
+  Porque garantiza un arranque ordenado y permite que `docker compose up -d --wait` termine únicamente cuando los tres servicios estén saludables. Esta configuración además permitió que B3 funcionara correctamente en un Codespace nuevo.
+
+- **Fuentes consultadas:**
+  - Docker Docs — Compose `depends_on`.
+  - Docker Docs — Healthchecks.
+  - PostgreSQL — `pg_isready`.
+
+- **Cómo lo verifiqué:**
+
+  ```bash
+  docker compose down
+  docker compose up -d --wait
+  docker compose ps
+  ```
+
+**Qué no me funcionó:**
+La configuración inicial usaba únicamente depends_on, lo cual definía el orden de inicio pero no garantizaba que PostgreSQL estuviera listo para aceptar conexiones. Por eso se reemplazó por condition: service_healthy.
