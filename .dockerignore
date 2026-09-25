@@ -1,0 +1,11 @@
+.git
+.github
+.env
+.env.*
+api/
+db/
+node_modules/
+*.log
+README.md
+compose.yaml
+.devcontainer/
