@@ -9,6 +9,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
     healthcheck:
       test:
         [
@@ -34,6 +36,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - frontend
+      - backend
     healthcheck:
       test:
         [
@@ -56,6 +61,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - frontend
     healthcheck:
       test:
         [
@@ -69,3 +76,7 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  frontend:
+  backend:
