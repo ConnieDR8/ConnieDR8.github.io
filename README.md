@@ -135,3 +135,55 @@ La configuración inicial usaba únicamente depends_on, lo cual definía el orde
 
 - **Qué no me funcionó:**
 Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado en su Dockerfile. Esto se corrigió durante B4 configurando USER postgres.
+
+### Reto 4: Red segmentada
+
+- **Decisión:**
+  Separé los servicios en dos redes: `frontend` para `web` y `api`, y `backend` para `api` y `db`. La API es el único servicio conectado a ambas redes.
+
+- **Alternativas que evalué:**
+  - Una sola red para todos los servicios: más simple, pero permite que `web` pueda resolver directamente a `db`.
+  - Dos redes segmentadas: limita la comunicación a los servicios que realmente la necesitan.
+
+- **Por qué elegí esta:**
+  Aplica el principio de mínimo privilegio. `web` solo necesita comunicarse con `api`, mientras que únicamente `api` necesita acceso a PostgreSQL.
+
+- **Fuentes consultadas:**
+  - Docker Docs — Networking in Compose.
+  - Docker Docs — `ports` y redes definidas por el usuario.
+
+- **Cómo lo verifiqué:**
+
+  Verifiqué que `web` no puede resolver directamente a `db`:
+
+  ```bash
+  docker compose exec web getent hosts db
+  ```
+  El comando no devolvió ninguna dirección. Luego comprobé su código de salida:
+  $LASTEXITCODE
+  2
+
+  Esto confirmó que web no puede resolver el nombre db.
+  Después comprobé que api sí puede resolver a db:
+  docker compose exec api getent hosts db
+  ```bash
+   Resultado:
+   172.19.0.2      db
+  ```
+  Finalmente comprobé los puertos de los servicios:
+  docker compose ps
+  ```bash
+  Resultado:
+  NAME           IMAGE        SERVICE   STATUS                   PORTS
+  perfil-api-1   perfil-api   api       Up (healthy)             3000/tcp
+  perfil-db-1    perfil-db    db        Up (healthy)             5432/tcp
+  perfil-web-1   perfil-web   web       Up (healthy)             0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+  ```
+  Con esto se comprobó que:
+- web no puede resolver db.
+- api sí puede resolver db.
+- api y db utilizan únicamente puertos internos.
+- solo web publica el puerto 8080 hacia el host.
+- los tres servicios permanecen en estado healthy.
+- Qué no me funcionó:
+  Inicialmente los tres servicios utilizaban la red predeterminada de Docker Compose, por lo que web podía alcanzar directamente a db. La solución fue separar los servicios en las redes frontend y backend, dejando a api como único servicio conectado a ambas.
