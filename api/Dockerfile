@@ -19,6 +19,11 @@ COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 # Copia únicamente el código necesario para ejecutar la API.
 COPY --chown=node:node app.js ./
 
+# npm solo se necesita durante la construcción, no en tiempo de ejecución.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    /usr/local/bin/npm \
+    /usr/local/bin/npx
+
 USER node
 
 EXPOSE 3000
