@@ -246,3 +246,91 @@ Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado 
 - **Qué no me funcionó:**
   Cambiar simplemente la imagen base no era suficiente. Al ejecutar: docker scout recommendations perfil-api:reto5-before comprobé que node:22.23.3-bookworm-slim ya estaba actualizada.
   Las vulnerabilidades críticas restantes pertenecen a paquetes de la imagen base y actualmente aparecen como Fixed version: not fixed
+
+
+ ### Reto 6: Cero secretos y arranque automático
+
+- **Decisión:**
+  Parte de este reto ya había sido implementada durante B3. El archivo `.env` no se almacena en Git; cuando un Codespace nuevo inicia, `.devcontainer/start-lab.sh` genera automáticamente una contraseña de desarrollo y crea el `.env` local antes de ejecutar Docker Compose.
+
+- **Alternativas que evalué:**
+  - Guardar `.env` en el repositorio: permitiría arrancar fácilmente, pero expondría credenciales y está prohibido.
+  - Usar secretos personales de GitHub Codespaces: protege la contraseña, pero el evaluador no tendría acceso a los secretos configurados en mi cuenta.
+  - Generar una credencial de desarrollo al iniciar el Codespace: mantiene el secreto fuera del repositorio y permite que cualquier Codespace nuevo arranque automáticamente.
+
+- **Por qué elegí esta:**
+  Porque resuelve ambos requisitos: no almacenar credenciales reales en Git ni en las imágenes y, al mismo tiempo, permitir que un Codespace nuevo funcione sin intervención. La contraseña generada es una credencial de desarrollo efímera, no un secreto de producción.
+
+- **Fuentes consultadas:**
+  - Docker Docs — variables de entorno y sustitución en Compose.
+  - Docker Docs — buenas prácticas para secretos en Dockerfiles.
+  - GitHub Docs — secretos de GitHub Codespaces.
+
+- **Cómo lo verifiqué:**
+
+  Confirmé que `.env` está ignorado:
+
+  ```bash
+  git check-ignore -v .env
+  ```
+  Resultado:
+  ```text
+  .gitignore:3:.env    .env
+  ```
+
+  Comprobé que .env nunca apareció en el historial:
+  ```bash
+  git log --all --full-history -- .env
+  ```
+  El comando no produjo salida.
+  También comprobé que existe .env.example y revisé las capas de las imágenes:
+   ```bash
+  docker history --no-trunc perfil-api
+  docker history --no-trunc perfil-web
+  docker history --no-trunc perfil-db
+  ```
+  También comprobé que existe `.env.example` y revisé el historial completo de las capas de las tres imágenes:
+
+  ```bash
+  docker history --no-trunc perfil-api
+  docker history --no-trunc perfil-web
+  docker history --no-trunc perfil-db
+  ```
+
+  Como verificación complementaria, filtré el historial buscando nombres comunes asociados a credenciales y secretos:
+
+  ```powershell
+  docker history --no-trunc perfil-api | Select-String -Pattern 'POSTGRES_PASSWORD|DB_PASSWORD|PASSWORD=|SECRET|TOKEN|API_KEY|PRIVATE_KEY'
+
+  docker history --no-trunc perfil-web | Select-String -Pattern 'POSTGRES_PASSWORD|DB_PASSWORD|PASSWORD=|SECRET|TOKEN|API_KEY|PRIVATE_KEY'
+
+  docker history --no-trunc perfil-db | Select-String -Pattern 'POSTGRES_PASSWORD|DB_PASSWORD|PASSWORD=|SECRET|TOKEN|API_KEY|PRIVATE_KEY'
+  ```
+
+  No se encontraron contraseñas, tokens ni secretos incorporados en las imágenes.
+  Estos comandos no produjeron resultados, por lo que no se encontraron contraseñas, tokens ni secretos incorporados en las capas de las imágenes.
+
+  Finalmente, se creó un Codespace nuevo desde `main`. Sin ejecutar comandos manuales, el script generó su propio `.env`, levantó los tres servicios y la aplicación quedó disponible automáticamente.
+  Verifiación del codespace:
+  ```bash
+  @ConnieDR8 ➜ /workspaces/ConnieDR8.github.io (main) $ test -f .env && echo ".env generado correctamente"
+  .env generado correctamente
+
+  @ConnieDR8 ➜ /workspaces/ConnieDR8.github.io (main) $ docker compose ps
+  NAME                      IMAGE                   COMMAND                  SERVICE   CREATED         STATUS                        PORTS
+  conniedr8githubio-api-1   conniedr8githubio-api   "docker-entrypoint.s…"   api       2 minutes ago   Up 2 minutes (healthy)        3000/tcp
+  conniedr8githubio-db-1    conniedr8githubio-db    "docker-entrypoint.s…"   db        2 minutes ago   Up 2 minutes (healthy)        5432/tcp
+  conniedr8githubio-web-1   conniedr8githubio-web   "/docker-entrypoint.…"   web       2 minutes ago   Up About a minute (healthy)   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+  @ConnieDR8 ➜ /workspaces/ConnieDR8.github.io (main) $ curl -I http://localhost:8080
+  HTTP/1.1 200 OK
+  Server: nginx/1.30.5
+  Date: Sat, 26 Sep 2026 04:31:20 GMT
+  Content-Type: text/html
+  Content-Length: 5631
+  Last-Modified: Sat, 26 Sep 2026 04:27:06 GMT
+  Connection: keep-alive
+  ETag: "6ab7499a-15ff"
+  Accept-Ranges: bytes
+  ```
+- **Qué no me funcionó:**
+  Usar un secreto personal de Codespaces no era una solución adecuada para la evaluación, porque esos secretos pertenecen a mi cuenta y no estarían disponibles cuando otra persona cree un Codespace del repositorio. Por eso se optó por generar automáticamente una credencial local de desarrollo.
