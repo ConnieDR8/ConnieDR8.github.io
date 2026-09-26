@@ -187,3 +187,62 @@ Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado 
 - los tres servicios permanecen en estado healthy.
 - Qué no me funcionó:
   Inicialmente los tres servicios utilizaban la red predeterminada de Docker Compose, por lo que web podía alcanzar directamente a db. La solución fue separar los servicios en las redes frontend y backend, dejando a api como único servicio conectado a ambas.
+
+
+  ### Reto 5: Escaneo de vulnerabilidades
+
+- **Decisión:**
+  Analicé la imagen de la API con Docker Scout, debido a que ya tenía una cuenta creada a la mano. Detecté que varias vulnerabilidades HIGH provenían de paquetes incluidos con npm, aunque npm no es necesario para ejecutar la API. Por ello lo eliminé de la etapa final del Dockerfile.
+
+- **Alternativas que evalué:**
+  - Cambiar la imagen base de Node.js: Scout indicó que `node:22.23.3-bookworm-slim` ya estaba actualizada.
+  - Eliminar herramientas innecesarias del runtime: permitió reducir vulnerabilidades sin cambiar la versión de Node.js.
+
+- **Por qué elegí esta:**
+  Porque npm solo se necesita durante la construcción. La API se ejecuta directamente con `node app.js`, por lo que mantener npm en runtime aumentaba innecesariamente la superficie de ataque.
+
+- **Fuentes consultadas:**
+  - Docker Scout.
+  - Docker Docs — análisis de vulnerabilidades de imágenes.
+  - Base de datos CVE mostrada por Docker Scout.
+
+- **Cómo lo verifiqué:**
+
+  Escaneo inicial:
+
+  ```bash
+  docker scout quickview perfil-api:reto5-before
+  docker scout cves --only-severity critical,high perfil-api:reto5-before
+  ```
+  Resultado:
+  ```bash
+  CRITICAL: 2
+  HIGH: 17
+  Health score: C (56%)
+  ```
+  Luego consulté las recomendaciones de Docker Scout:
+  ```bash
+  docker scout recommendations perfil-api:reto5-before
+  ```
+  Scout indicó que la imagen base node:22.23.3-bookworm-slim ya estaba actualizada, por lo que cambiar únicamente la versión base no aportaba una mejora directa.
+  Por eso opté por reducir la superficie de ataque eliminando npm de la etapa final, ya que la API se ejecuta directamente con Node.js y no necesita npm en runtime.
+
+  Después de eliminar npm de la imagen de ejecución:
+
+  ```bash
+  docker scout quickview perfil-api:reto5-after
+  docker scout cves --only-severity critical,high perfil-api:reto5-after
+  ```
+
+  Resultado:
+  ```bash
+  CRITICAL: 2
+  HIGH: 9
+  Health score: B (78%)
+  ```
+  Se eliminaron 8 vulnerabilidades HIGH. Además, Scout pasó de detectar 397 paquetes a 214.
+  Una de las vulnerabilidades eliminadas fue CVE-2026-48815, que afectaba a sigstore 3.1.0 y tenía severidad HIGH. El paquete estaba incluido dentro de npm y desapareció al retirar npm de la imagen final.
+
+- **Qué no me funcionó:**
+  Cambiar simplemente la imagen base no era suficiente. Al ejecutar: docker scout recommendations perfil-api:reto5-before comprobé que node:22.23.3-bookworm-slim ya estaba actualizada.
+  Las vulnerabilidades críticas restantes pertenecen a paquetes de la imagen base y actualmente aparecen como Fixed version: not fixed
