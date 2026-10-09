@@ -348,3 +348,23 @@ Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado 
   ```
 - **Qué no me funcionó:**
   Usar un secreto personal de Codespaces no era una solución adecuada para la evaluación, porque esos secretos pertenecen a mi cuenta y no estarían disponibles cuando otra persona cree un Codespace del repositorio. Por eso se optó por generar automáticamente una credencial local de desarrollo.
+## Bitácora LAB-03
+
+### Reto 4: Mínimo privilegio y cadena de suministro
+
+- **Decisión:** Definí los permisos necesarios por job, fijé las GitHub Actions mediante SHA y configuré Dependabot para revisar sus actualizaciones semanalmente.
+- **Alternativas que evalué:** Utilizar permisos generales para todos los jobs o definir permisos específicos; usar etiquetas de versión como `@v4` o SHA completos.
+- **Por qué elegí esta:** Los permisos específicos reducen el acceso disponible para cada job. Los SHA permiten identificar exactamente qué versión de una acción ejecuta el pipeline, mientras que Dependabot facilita mantenerla actualizada.
+- **Fuentes consultadas:**
+  - https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication
+  - https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+- **Cómo lo verifiqué:** Los cinco jobs aprobaron en https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/37960482116
+- **Qué no me funcionó:** No se presentaron errores de ejecución en este reto. La validación del funcionamiento completo de Dependabot dependerá de sus futuras comprobaciones programadas.
+
+### Pregunta B3: Cómo llega el sitio al job test
+
+- **Decisión:** Reconstruir `_site/` en el job `test` usando el mismo script y commit que utiliza `build`.
+- **Alternativas que evalué:** Descargar el artefacto generado por `build` o reconstruir el sitio en `test`.
+- **Por qué elegí esta:** La reconstrucción simplifica la configuración y permite comprobar los mismos archivos publicados a partir del mismo código.
+- **Cómo lo verifiqué:** Vitest y Jest aprobaron en el pipeline.
+- **Qué no me funcionó:** Inicialmente Vitest intentaba ejecutar también las pruebas de Jest de la API. Se corrigió limitando Vitest a `tests/**/*.test.js`.
