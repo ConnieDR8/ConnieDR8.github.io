@@ -53,7 +53,7 @@ app.post("/api/mensajes", async (req, res, next) => {
       "INSERT INTO mensajes (nombre, mensaje) VALUES ($1, $2) RETURNING id, nombre, mensaje, fecha",
       [nombre, mensaje]
     );
-    res.status(201).json(rows[0]);
+    res.status(202).json(rows[0]);
   } catch (e) { next(e); }
 });
 
