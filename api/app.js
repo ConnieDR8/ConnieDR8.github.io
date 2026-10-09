@@ -64,9 +64,20 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Error interno." });
 });
 
-const server = app.listen(port, "0.0.0.0", () => console.log(`API escuchando en el puerto ${port}`));
+if (require.main === module) {
+  const server = app.listen(port, "0.0.0.0", () => {
+    console.log(`API escuchando en el puerto ${port}`);
+  });
 
-// Sin esto, "docker stop" tarda 10 segundos: el proceso ignora la señal de apagado.
-for (const s of ["SIGINT", "SIGTERM"]) {
-  process.on(s, () => { console.log(`Señal ${s}: cerrando`); server.close(() => pool.end().then(() => process.exit(0))); });
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.on(signal, () => {
+      console.log(`Señal ${signal}: cerrando`);
+
+      server.close(() => {
+        pool.end().then(() => process.exit(0));
+      });
+    });
+  }
 }
+
+module.exports = app;
