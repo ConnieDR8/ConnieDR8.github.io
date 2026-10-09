@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: api
+        run: npm ci
+
+      - name: Revisar código con ESLint
+        working-directory: api
+        run: npm run lint
+
+      - name: Ejecutar pruebas
+        working-directory: api
+        run: npm test
+
+      - name: Construir imagen de API
+        run: docker build -f api/Dockerfile -t perfil-api:ci ./api
+
+      - name: Construir imagen web
+        run: docker build -f web/Dockerfile -t perfil-web:ci .
