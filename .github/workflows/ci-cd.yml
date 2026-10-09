@@ -102,6 +102,31 @@ jobs:
         working-directory: api
         run: npm test -- --json --outputFile=jest-report.json
 
+      - name: Integracion con Docker Compose
+        env:
+          COMPOSE_PROJECT_NAME: lab03integracion
+        run: |
+          set -euo pipefail
+
+          export POSTGRES_DB=lab03
+          export POSTGRES_USER=app_lab03
+          export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+
+          limpiar() {
+            resultado=$?
+
+            if [ "$resultado" -ne 0 ]; then
+              echo "Fallo la integracion. Logs:"
+              docker compose logs --no-color db api web || true
+            fi
+
+            docker compose down -v --remove-orphans || true
+          }
+
+          trap limpiar EXIT
+
+          docker compose up -d --wait --build
+          node scripts/integracion-compose.mjs
       - name: Resumen de pruebas
         if: always()
         run: node scripts/resumen-pruebas.mjs
