@@ -383,3 +383,27 @@ Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado 
   - https://trivy.dev/latest/docs/configuration/reporting/
 - **Cómo lo verifiqué:** Pendiente de añadir el enlace al run de Actions donde aparezcan los resúmenes y el badge actualizado.
 - **Qué no me funcionó:** Pendiente de completar después de ejecutar y validar el pipeline.
+
+## Recuperacion de produccion - R5
+
+El job `deploy-prod` verifica la URL publicada despues de desplegar.
+
+Comprueba HTTP 200, el nombre del perfil y que el libro de visitas
+permanece oculto cuando GitHub Pages devuelve 404 para `/api/mensajes`.
+
+### Procedimiento de rollback
+
+Si una version publicada presenta errores:
+
+1. Identificar el commit que introdujo el problema.
+2. Crear una rama nueva desde `main` actualizada.
+3. Ejecutar `git revert` sobre el commit defectuoso.
+4. Abrir un Pull Request con esa reversion.
+5. Esperar los controles obligatorios de CI/CD.
+6. Integrar el PR y aprobar el despliegue en `github-pages`.
+7. Revisar el nuevo run y confirmar que el sitio funciona.
+
+Se prefiere `git revert` frente a modificar manualmente produccion:
+la reversion queda registrada en Git y pasa nuevamente por el pipeline.
+
+**Prueba de rollback:** pendiente de ejecutar y enlazar.

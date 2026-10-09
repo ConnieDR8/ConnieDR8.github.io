@@ -386,3 +386,22 @@ jobs:
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
         with:
           artifact_name: github-pages
+
+      - name: Obtener codigo para verificacion
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Preparar Node.js para verificacion
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Instalar dependencias de verificacion
+        run: npm ci
+
+      - name: Verificar produccion en Pages
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node scripts/verificar-produccion.mjs "$PAGE_URL"
