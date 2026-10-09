@@ -1,4 +1,4 @@
-﻿name: CI/CD
+name: CI/CD
 
 on:
   pull_request:
@@ -56,3 +56,40 @@ jobs:
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         with:
           path: _site/
+
+  test:
+    name: test
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+
+      - name: Instalar dependencias del sitio
+        run: npm ci
+
+      - name: Construir sitio para pruebas
+        run: npm run build
+
+      - name: Ejecutar Vitest
+        run: npm test
+
+      - name: Instalar dependencias de API
+        working-directory: api
+        run: npm ci
+
+      - name: Ejecutar pruebas de API
+        working-directory: api
+        run: npm test
