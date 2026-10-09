@@ -252,19 +252,37 @@ jobs:
         run: |
           set -euo pipefail
 
-          CODIGO=$(curl --fail --silent --show-error \
-            --retry 12 \
-            --retry-connrefused \
-            --retry-delay 1 \
-            --output smoke.html \
-            --write-out "%{http_code}" \
-            http://127.0.0.1:18080/)
+          listo=0
 
-          test "$CODIGO" = "200"
+          for intento in {1..15}; do
+            echo "Intento HTTP ${intento}/15"
+
+            if CODIGO=$(curl \
+                --fail --silent --show-error \
+                --max-time 2 \
+                --output smoke.html \
+                --write-out "%{http_code}" \
+                http://127.0.0.1:18080/ 2>smoke-error.log); then
+
+              if [[ "$CODIGO" == "200" ]]; then
+                listo=1
+                break
+              fi
+            fi
+
+            sleep 1
+          done
+
+          if [[ "$listo" -ne 1 ]]; then
+            echo "ERROR: Nginx no respondio HTTP 200"
+            cat smoke-error.log || true
+            docker logs perfil-smoke-ci || true
+            exit 1
+          fi
+
           grep -Fq "Connie Duran" smoke.html
 
           echo "SMOKE OK: HTTP 200 y contenido correcto"
-
       - name: Limpiar contenedor
         if: always()
         run: |
