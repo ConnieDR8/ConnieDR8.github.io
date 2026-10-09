@@ -1,5 +1,8 @@
 # Perfil: Connie Yamile Durán Ramírez
 
+[![CI/CD](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/workflows/ci-cd.yml/badge.svg?branch=main)](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/workflows/ci-cd.yml)
+
+
 Sitio personal publicado en https://ConnieDR8.github.io
 
 ## Cómo se publica
@@ -368,3 +371,15 @@ Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado 
 - **Por qué elegí esta:** La reconstrucción simplifica la configuración y permite comprobar los mismos archivos publicados a partir del mismo código.
 - **Cómo lo verifiqué:** Vitest y Jest aprobaron en el pipeline.
 - **Qué no me funcionó:** Inicialmente Vitest intentaba ejecutar también las pruebas de Jest de la API. Se corrigió limitando Vitest a `tests/**/*.test.js`.
+
+### Reto 6: El pipeline se explica solo
+
+- **Decisión:** Generar un resumen de pruebas desde los reportes JSON de Vitest y Jest, y mostrar las vulnerabilidades de Trivy agrupadas por severidad. Agregué también el badge de CI/CD al README.
+- **Alternativas que evalué:** Mostrar solamente los logs de cada job o utilizar `GITHUB_STEP_SUMMARY`. Para Trivy, mostrar solo vulnerabilidades críticas o incluir todas las severidades.
+- **Por qué elegí esta:** El resumen permite revisar rápidamente las pruebas y vulnerabilidades antes de aprobar producción, sin buscar cada resultado dentro de los logs.
+- **Fuentes consultadas:**
+  - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
+  - https://vitest.dev/guide/reporters
+  - https://trivy.dev/latest/docs/configuration/reporting/
+- **Cómo lo verifiqué:** Pendiente de añadir el enlace al run de Actions donde aparezcan los resúmenes y el badge actualizado.
+- **Qué no me funcionó:** Pendiente de completar después de ejecutar y validar el pipeline.
