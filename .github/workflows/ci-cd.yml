@@ -155,3 +155,66 @@ jobs:
       - name: Cerrar sesion en GHCR
         if: always()
         run: docker logout ghcr.io
+
+  security:
+    name: security
+    needs: package
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Definir imagenes del commit
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          OWNER=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          TAG="sha-${SOURCE_SHA:0:7}"
+
+          echo "WEB_IMAGE=ghcr.io/${OWNER}/perfil-web:${TAG}" >> "$GITHUB_ENV"
+          echo "API_IMAGE=ghcr.io/${OWNER}/perfil-api:${TAG}" >> "$GITHUB_ENV"
+
+      - name: Descargar imagenes de GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io \
+            -u "$GITHUB_ACTOR" --password-stdin
+
+          docker pull "$WEB_IMAGE"
+          docker pull "$API_IMAGE"
+
+      - name: Analizar imagen web con Trivy
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          scan-type: image
+          image-ref: ${{ env.WEB_IMAGE }}
+          format: table
+          severity: CRITICAL
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Analizar imagen API con Trivy
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          scan-type: image
+          image-ref: ${{ env.API_IMAGE }}
+          format: table
+          severity: CRITICAL
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Cerrar sesion de GHCR
+        if: always()
+        run: docker logout ghcr.io
