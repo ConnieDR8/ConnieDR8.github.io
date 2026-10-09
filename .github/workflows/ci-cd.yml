@@ -92,7 +92,7 @@ jobs:
         run: npm run build
 
       - name: Ejecutar Vitest
-        run: npm test
+        run: npm test -- --reporter=default --reporter=json --outputFile=vitest-report.json
 
       - name: Instalar dependencias de API
         working-directory: api
@@ -100,7 +100,11 @@ jobs:
 
       - name: Ejecutar pruebas de API
         working-directory: api
-        run: npm test
+        run: npm test -- --json --outputFile=jest-report.json
+
+      - name: Resumen de pruebas
+        if: always()
+        run: node scripts/resumen-pruebas.mjs
 
   package:
     name: package
@@ -192,6 +196,47 @@ jobs:
 
           docker pull "$WEB_IMAGE"
           docker pull "$API_IMAGE"
+
+      - name: Resumen de Trivy por severidad
+        run: |
+          set -euo pipefail
+
+          {
+            echo "### Trivy - Vulnerabilidades con correccion disponible"
+            echo ""
+            echo "| Imagen | CRITICAL | HIGH | MEDIUM | LOW | UNKNOWN |"
+            echo "|---|---:|---:|---:|---:|---:|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for nombre in web api; do
+            if [[ "$nombre" == "web" ]]; then
+              imagen="$WEB_IMAGE"
+            else
+              imagen="$API_IMAGE"
+            fi
+
+            archivo="trivy-${nombre}.json"
+
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v trivy-cache:/root/.cache \
+              aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
+              image --scanners vuln --pkg-types os,library \
+              --ignore-unfixed --format json "$imagen" > "$archivo"
+
+            valores=()
+
+            for nivel in CRITICAL HIGH MEDIUM LOW UNKNOWN; do
+              cantidad=$(jq --arg nivel "$nivel" \
+                '[.Results[]?.Vulnerabilities[]? | select(.Severity == $nivel)] | length' \
+                "$archivo")
+
+              valores+=("$cantidad")
+            done
+
+            printf '| %s | %s | %s | %s | %s | %s |\n' \
+              "$nombre" "${valores[@]}" >> "$GITHUB_STEP_SUMMARY"
+          done
 
       - name: Analizar ambas imagenes con Trivy
         run: |
