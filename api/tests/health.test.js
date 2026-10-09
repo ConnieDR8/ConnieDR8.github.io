@@ -13,7 +13,7 @@ describe("GET /api/health", () => {
 
     const response = await request(app).get("/api/health");
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     expect(response.body).toEqual({ status: "ok" });
   });
 
