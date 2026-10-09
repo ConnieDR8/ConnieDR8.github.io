@@ -211,3 +211,62 @@ jobs:
       - name: Cerrar sesion de GHCR
         if: always()
         run: docker logout ghcr.io
+
+  smoke:
+    name: smoke
+    needs: security
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Definir imagen web del commit
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          OWNER=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          TAG="sha-${SOURCE_SHA:0:7}"
+          echo "WEB_IMAGE=ghcr.io/${OWNER}/perfil-web:${TAG}" >> "$GITHUB_ENV"
+
+      - name: Descargar imagen desde GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io \
+            -u "$GITHUB_ACTOR" --password-stdin
+
+          docker pull "$WEB_IMAGE"
+
+      - name: Iniciar contenedor web
+        run: |
+          docker run -d \
+            --name perfil-smoke-ci \
+            --add-host api:127.0.0.1 \
+            -p 127.0.0.1:18080:8080 \
+            "$WEB_IMAGE"
+
+      - name: Verificar HTTP 200 y contenido HTML
+        run: |
+          set -euo pipefail
+
+          CODIGO=$(curl --fail --silent --show-error \
+            --retry 12 \
+            --retry-connrefused \
+            --retry-delay 1 \
+            --output smoke.html \
+            --write-out "%{http_code}" \
+            http://127.0.0.1:18080/)
+
+          test "$CODIGO" = "200"
+          grep -Fq "Connie Duran" smoke.html
+
+          echo "SMOKE OK: HTTP 200 y contenido correcto"
+
+      - name: Limpiar contenedor
+        if: always()
+        run: |
+          docker rm -f perfil-smoke-ci 2>/dev/null || true
+          docker logout ghcr.io
