@@ -1,0 +1,28 @@
+{
+  "name": "perfil",
+  "version": "1.0.0",
+  "description": "Sitio personal publicado en https://ConnieDR8.github.io",
+  "main": "libro-de-visitas.js",
+  "scripts": {
+    "test": "vitest run tests",
+    "build": "node scripts/build-site.mjs",
+    "lint:html": "htmlhint _site/index.html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ConnieDR8/ConnieDR8.github.io.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/ConnieDR8/ConnieDR8.github.io/issues"
+  },
+  "homepage": "https://github.com/ConnieDR8/ConnieDR8.github.io#readme",
+  "devDependencies": {
+    "htmlhint": "^1.9.2",
+    "jsdom": "^29.1.1",
+    "vitest": "^5.0.3"
+  }
+}

@@ -4,7 +4,21 @@ Sitio personal publicado en https://ConnieDR8.github.io
 
 ## Cómo se publica
 
-Cada push a `main` despliega automáticamente con GitHub Pages.
+Cada cambio pasa por el pipeline CI/CD. Un push a `main` permite desplegar el sitio después de superar las verificaciones y recibir aprobación manual.
+
+## Delivery o deployment
+
+Este laboratorio implementa **Continuous Delivery**. Cada pull request hacia `main` ejecuta las etapas `build`, `test`, `package`, `security` y `smoke`, pero no despliega.
+
+Cuando los cambios se integran en `main`, el pipeline vuelve a comprobarlos. Si todas las etapas pasan, `deploy-prod` espera la aprobación de una persona mediante el environment `github-pages`. Después publica el artefacto `github-pages`, generado exclusivamente desde `_site/`.
+
+La diferencia con **Continuous Deployment** es la aprobación humana: en Continuous Deployment el despliegue se ejecutaría automáticamente después de superar las verificaciones.
+
+Para cambiar a Continuous Deployment, quitaría la exigencia de aprobación manual del environment, manteniendo las pruebas y la condición que limita el despliegue a `main`.
+
+No lo haría en este laboratorio porque la revisión humana permite comprobar los cambios antes de publicarlos. En un sitio con cambios frecuentes y pruebas suficientemente confiables, el despliegue automático podría resultar conveniente.
+
+La publicación se realiza mediante GitHub Actions, no desde toda la rama `main`, para evitar exponer archivos internos como `compose.yaml`, `api/` o `.env.example`.
 
 ## Flujo de trabajo
 

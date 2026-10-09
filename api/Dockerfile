@@ -24,6 +24,11 @@ RUN rm -rf /usr/local/lib/node_modules/npm \
     /usr/local/bin/npm \
     /usr/local/bin/npx
 
+# Corrige vulnerabilidades criticas de perl-base detectadas por Trivy.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends perl-base=5.36.0-7+deb12u4 \
+    && rm -rf /var/lib/apt/lists/*
+
 USER node
 
 EXPOSE 3000
