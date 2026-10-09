@@ -19,6 +19,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Preparar Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -67,6 +68,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Preparar Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -93,3 +95,63 @@ jobs:
       - name: Ejecutar pruebas de API
         working-directory: api
         run: npm test
+
+  package:
+    name: package
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Autenticarse en GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io \
+            -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Construir y publicar imagenes
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          OWNER=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          TAG="sha-${SOURCE_SHA:0:7}"
+
+          WEB="ghcr.io/${OWNER}/perfil-web:${TAG}"
+          API="ghcr.io/${OWNER}/perfil-api:${TAG}"
+
+          echo "Publicando version ${TAG}"
+
+          docker build \
+            -f web/Dockerfile \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${SOURCE_SHA}" \
+            -t "$WEB" .
+
+          docker build \
+            -f api/Dockerfile \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${SOURCE_SHA}" \
+            -t "$API" ./api
+
+          docker push "$WEB"
+          docker push "$API"
+
+          echo "### Imagenes publicadas" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Web: ${WEB}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- API: ${API}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cerrar sesion en GHCR
+        if: always()
+        run: docker logout ghcr.io
