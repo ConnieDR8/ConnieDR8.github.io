@@ -1,0 +1,13 @@
+rules:
+  - id: api-exposicion-error-interno
+    languages: [javascript]
+    severity: WARNING
+    message: "Evitar devolver mensajes internos del servidor al cliente."
+    pattern: |
+      res.status(503).json({ status: "error", detalle: $ERROR.message })
+
+  - id: javascript-uso-innerhtml
+    languages: [javascript]
+    severity: ERROR
+    message: "Revisar innerHTML por posible riesgo de XSS."
+    pattern: $ELEMENT.innerHTML = $INPUT

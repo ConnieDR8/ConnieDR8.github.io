@@ -1,0 +1,9 @@
+# CVE-2026-46675 - libpng 1.6.58-r1, MEDIUM.
+# Imagen: nginxinc/nginx-unprivileged:1.30-alpine3.24.
+# Decision del 2026-10-10: aceptacion temporal.
+# NGINX sirve archivos estaticos; no decodifica PNG
+# enviados por usuarios en el servidor.
+# Existe correccion: libpng 1.6.59-r0.
+# Revisar antes del 2026-10-17; actualizar la imagen
+# base y retirar esta excepcion al confirmar el parche.
+CVE-2026-46675
