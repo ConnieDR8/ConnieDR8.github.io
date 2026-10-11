@@ -243,61 +243,80 @@ jobs:
           docker pull "$WEB_IMAGE"
           docker pull "$API_IMAGE"
 
-      - name: Analizar JavaScript con Semgrep
-        run: |
-          set -euo pipefail
-          docker run --rm \
-            -v "$PWD:/src:ro" \
-            -v "$RUNNER_TEMP:/out" \
-            -w /src \
-            semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b \
-            semgrep scan --metrics=off \
-            --config .semgrep.yml \
-            --sarif --output /out/semgrep.sarif \
-            api/app.js libro-de-visitas.js scripts
-          test -s "$RUNNER_TEMP/semgrep.sarif"
-
-      - name: Resumen de Trivy por severidad
+      - name: Analizar Semgrep y Trivy en paralelo
         run: |
           set -euo pipefail
 
-          {
-            echo "### Trivy - Vulnerabilidades con correccion disponible"
-            echo ""
-            echo "| Imagen | CRITICAL | HIGH | MEDIUM | LOW | UNKNOWN |"
-            echo "|---|---:|---:|---:|---:|---:|"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          for nombre in web api; do
-            if [[ "$nombre" == "web" ]]; then
-              imagen="$WEB_IMAGE"
-            else
-              imagen="$API_IMAGE"
-            fi
-
-            archivo="trivy-${nombre}.json"
-
+          # Proceso 1: analisis estatico de JavaScript
+          (
             docker run --rm \
-              -v /var/run/docker.sock:/var/run/docker.sock \
-              -v trivy-cache:/root/.cache \
-              -v "$PWD:/workspace:ro" \
-              aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
-              image --scanners vuln --pkg-types os,library \
-              --ignore-unfixed --ignorefile /workspace/.trivyignore --format json "$imagen" > "$archivo"
+              -v "$PWD:/src:ro" \
+              -v "$RUNNER_TEMP:/out" \
+              -w /src \
+              semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b \
+              semgrep scan --metrics=off \
+              --config .semgrep.yml \
+              --sarif --output /out/semgrep.sarif \
+              api/app.js libro-de-visitas.js scripts
 
-            valores=()
+            test -s "$RUNNER_TEMP/semgrep.sarif"
+          ) &
+          pid_semgrep=$!
 
-            for nivel in CRITICAL HIGH MEDIUM LOW UNKNOWN; do
-              cantidad=$(jq --arg nivel "$nivel" \
-                '[.Results[]?.Vulnerabilities[]? | select(.Severity == $nivel)] | length' \
-                "$archivo")
+          # Proceso 2: resumen de vulnerabilidades de ambas imagenes
+          (
+            {
+              echo "### Trivy - Vulnerabilidades con correccion disponible"
+              echo ""
+              echo "| Imagen | CRITICAL | HIGH | MEDIUM | LOW | UNKNOWN |"
+              echo "|---|---:|---:|---:|---:|---:|"
+            } >> "$GITHUB_STEP_SUMMARY"
 
-              valores+=("$cantidad")
+            for nombre in web api; do
+              if [[ "$nombre" == "web" ]]; then
+                imagen="$WEB_IMAGE"
+              else
+                imagen="$API_IMAGE"
+              fi
+
+              archivo="trivy-${nombre}.json"
+
+              docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v trivy-cache:/root/.cache \
+                -v "$PWD:/workspace:ro" \
+                aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
+                image --scanners vuln --pkg-types os,library \
+                --ignore-unfixed --ignorefile /workspace/.trivyignore \
+                --format json "$imagen" > "$archivo"
+
+              valores=()
+
+              for nivel in CRITICAL HIGH MEDIUM LOW UNKNOWN; do
+                cantidad=$(jq --arg nivel "$nivel" \
+                  '[.Results[]?.Vulnerabilities[]? | select(.Severity == $nivel)] | length' \
+                  "$archivo")
+
+                valores+=("$cantidad")
+              done
+
+              printf '| %s | %s | %s | %s | %s | %s |\n' \
+                "$nombre" "${valores[@]}" >> "$GITHUB_STEP_SUMMARY"
             done
+          ) &
+          pid_trivy=$!
 
-            printf '| %s | %s | %s | %s | %s | %s |\n' \
-              "$nombre" "${valores[@]}" >> "$GITHUB_STEP_SUMMARY"
-          done
+          # Esperar ambos procesos y detectar cualquier fallo
+          fallo=0
+          wait "$pid_semgrep" || fallo=1
+          wait "$pid_trivy" || fallo=1
+
+          if [[ "$fallo" -ne 0 ]]; then
+            echo "ERROR: fallo Semgrep o el resumen Trivy"
+            exit 1
+          fi
+
+          echo "Semgrep y resumen Trivy completados correctamente"
 
       - name: Generar reportes SARIF de Trivy
         run: |
