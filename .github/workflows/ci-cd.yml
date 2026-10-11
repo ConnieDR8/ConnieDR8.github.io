@@ -102,38 +102,6 @@ jobs:
         working-directory: api
         run: npm test -- --json --outputFile=jest-report.json
 
-      - name: Preparar Buildx para integracion
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
-
-      - name: Construir DB de integracion con cache
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
-        with:
-          context: ./db
-          file: ./db/Dockerfile
-          load: true
-          tags: lab03integracion-db:latest
-          cache-from: type=gha,scope=lab03-db
-          cache-to: type=gha,scope=lab03-db,mode=max
-
-      - name: Construir API de integracion con cache
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
-        with:
-          context: ./api
-          file: ./api/Dockerfile
-          load: true
-          tags: lab03integracion-api:latest
-          cache-from: type=gha,scope=lab03-api
-          cache-to: type=gha,scope=lab03-api,mode=max
-
-      - name: Construir web de integracion con cache
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
-        with:
-          context: .
-          file: ./web/Dockerfile
-          load: true
-          tags: lab03integracion-web:latest
-          cache-from: type=gha,scope=lab03-web
-          cache-to: type=gha,scope=lab03-web,mode=max
       - name: Integracion con Docker Compose
         env:
           COMPOSE_PROJECT_NAME: lab03integracion
@@ -149,7 +117,7 @@ jobs:
 
             if [ "$resultado" -ne 0 ]; then
               echo "Fallo la integracion. Logs:"
-              docker compose logs --no-color db api web || true
+              docker compose -f compose.yaml -f compose.ci.yaml logs --no-color db api web || true
             fi
 
             docker compose -f compose.yaml -f compose.ci.yaml down -v --remove-orphans || true
@@ -157,7 +125,7 @@ jobs:
 
           trap limpiar EXIT
 
-          docker compose -f compose.yaml -f compose.ci.yaml up -d --wait --no-build
+          docker compose -f compose.yaml -f compose.ci.yaml up -d --wait --build
           node scripts/integracion-compose.mjs
       - name: Resumen de pruebas
         if: always()
@@ -289,12 +257,6 @@ jobs:
             api/app.js libro-de-visitas.js scripts
           test -s "$RUNNER_TEMP/semgrep.sarif"
 
-      - name: Publicar SAST en Code scanning
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
-        with:
-          sarif_file: ${{ runner.temp }}/semgrep.sarif
-          category: semgrep
-
       - name: Resumen de Trivy por severidad
         run: |
           set -euo pipefail
@@ -318,7 +280,6 @@ jobs:
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v trivy-cache:/root/.cache \
-            -v "$PWD:/workspace:ro" \
               -v "$PWD:/workspace:ro" \
               aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
               image --scanners vuln --pkg-types os,library \
@@ -362,17 +323,30 @@ jobs:
             test -s "$RUNNER_TEMP/trivy-${servicio}.sarif"
           done
 
-      - name: Publicar Trivy web en Code scanning
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
-        with:
-          sarif_file: ${{ runner.temp }}/trivy-web.sarif
-          category: trivy-web
+      - name: Preparar reportes SARIF para una sola subida
+        run: |
+          set -euo pipefail
 
-      - name: Publicar Trivy API en Code scanning
+          mkdir -p "$RUNNER_TEMP/sarif"
+
+          for nombre in semgrep trivy-web trivy-api; do
+            jq --arg categoria "$nombre" '
+              .runs |= map(
+                .automationDetails = (.automationDetails // {})
+                | .automationDetails.id = $categoria
+              )
+            ' "$RUNNER_TEMP/${nombre}.sarif" \
+              > "$RUNNER_TEMP/sarif/${nombre}.sarif"
+
+            jq -e '(.runs | length) >= 1' \
+              "$RUNNER_TEMP/sarif/${nombre}.sarif" > /dev/null
+          done
+
+      - name: Publicar resultados SARIF en Code scanning
         uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
         with:
-          sarif_file: ${{ runner.temp }}/trivy-api.sarif
-          category: trivy-api
+          sarif_file: ${{ runner.temp }}/sarif
+          wait-for-processing: false
 
       - name: Analizar ambas imagenes con Trivy
         run: |
