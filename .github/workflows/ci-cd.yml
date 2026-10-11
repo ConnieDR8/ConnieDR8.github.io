@@ -117,15 +117,15 @@ jobs:
 
             if [ "$resultado" -ne 0 ]; then
               echo "Fallo la integracion. Logs:"
-              docker compose logs --no-color db api web || true
+              docker compose -f compose.yaml -f compose.ci.yaml logs --no-color db api web || true
             fi
 
-            docker compose down -v --remove-orphans || true
+            docker compose -f compose.yaml -f compose.ci.yaml down -v --remove-orphans || true
           }
 
           trap limpiar EXIT
 
-          docker compose up -d --wait --build
+          docker compose -f compose.yaml -f compose.ci.yaml up -d --wait --build
           node scripts/integracion-compose.mjs
       - name: Resumen de pruebas
         if: always()
@@ -154,39 +154,53 @@ jobs:
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io \
             -u "$GITHUB_ACTOR" --password-stdin
 
-      - name: Construir y publicar imagenes
+      - name: Preparar Buildx para publicacion
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+
+      - name: Definir etiquetas de imagenes
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          set -euo pipefail
-
           OWNER=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
           TAG="sha-${SOURCE_SHA:0:7}"
+          echo "WEB_IMAGE=ghcr.io/${OWNER}/perfil-web:${TAG}" >> "$GITHUB_ENV"
+          echo "API_IMAGE=ghcr.io/${OWNER}/perfil-api:${TAG}" >> "$GITHUB_ENV"
 
-          WEB="ghcr.io/${OWNER}/perfil-web:${TAG}"
-          API="ghcr.io/${OWNER}/perfil-api:${TAG}"
+      - name: Publicar web con cache Buildx
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: ./web/Dockerfile
+          push: true
+          tags: ${{ env.WEB_IMAGE }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha || github.sha }}
+          cache-from: |
+            type=gha,scope=lab03-web
+            type=gha,scope=package-web
+          cache-to: type=gha,scope=package-web,mode=max
 
-          echo "Publicando version ${TAG}"
+      - name: Publicar API con cache Buildx
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          push: true
+          tags: ${{ env.API_IMAGE }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha || github.sha }}
+          cache-from: |
+            type=gha,scope=lab03-api
+            type=gha,scope=package-api
+          cache-to: type=gha,scope=package-api,mode=max
 
-          docker build \
-            -f web/Dockerfile \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${SOURCE_SHA}" \
-            -t "$WEB" .
-
-          docker build \
-            -f api/Dockerfile \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
-            --label "org.opencontainers.image.revision=${SOURCE_SHA}" \
-            -t "$API" ./api
-
-          docker push "$WEB"
-          docker push "$API"
-
+      - name: Resumen de imagenes publicadas
+        run: |
           echo "### Imagenes publicadas" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Web: ${WEB}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- API: ${API}" >> "$GITHUB_STEP_SUMMARY"
-
+          echo "- Web: $WEB_IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          echo "- API: $API_IMAGE" >> "$GITHUB_STEP_SUMMARY"
       - name: Cerrar sesion en GHCR
         if: always()
         run: docker logout ghcr.io
@@ -229,68 +243,80 @@ jobs:
           docker pull "$WEB_IMAGE"
           docker pull "$API_IMAGE"
 
-      - name: Analizar JavaScript con Semgrep
-        run: |
-          set -euo pipefail
-          docker run --rm \
-            -v "$PWD:/src:ro" \
-            -v "$RUNNER_TEMP:/out" \
-            -w /src \
-            semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b \
-            semgrep scan --metrics=off \
-            --config .semgrep.yml \
-            --sarif --output /out/semgrep.sarif \
-            api/app.js libro-de-visitas.js scripts
-          test -s "$RUNNER_TEMP/semgrep.sarif"
-
-      - name: Publicar SAST en Code scanning
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
-        with:
-          sarif_file: ${{ runner.temp }}/semgrep.sarif
-          category: semgrep
-
-      - name: Resumen de Trivy por severidad
+      - name: Analizar Semgrep y Trivy en paralelo
         run: |
           set -euo pipefail
 
-          {
-            echo "### Trivy - Vulnerabilidades con correccion disponible"
-            echo ""
-            echo "| Imagen | CRITICAL | HIGH | MEDIUM | LOW | UNKNOWN |"
-            echo "|---|---:|---:|---:|---:|---:|"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          for nombre in web api; do
-            if [[ "$nombre" == "web" ]]; then
-              imagen="$WEB_IMAGE"
-            else
-              imagen="$API_IMAGE"
-            fi
-
-            archivo="trivy-${nombre}.json"
-
+          # Proceso 1: analisis estatico de JavaScript
+          (
             docker run --rm \
-              -v /var/run/docker.sock:/var/run/docker.sock \
-              -v trivy-cache:/root/.cache \
-            -v "$PWD:/workspace:ro" \
-              -v "$PWD:/workspace:ro" \
-              aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
-              image --scanners vuln --pkg-types os,library \
-              --ignore-unfixed --ignorefile /workspace/.trivyignore --format json "$imagen" > "$archivo"
+              -v "$PWD:/src:ro" \
+              -v "$RUNNER_TEMP:/out" \
+              -w /src \
+              semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b \
+              semgrep scan --metrics=off \
+              --config .semgrep.yml \
+              --sarif --output /out/semgrep.sarif \
+              api/app.js libro-de-visitas.js scripts
 
-            valores=()
+            test -s "$RUNNER_TEMP/semgrep.sarif"
+          ) &
+          pid_semgrep=$!
 
-            for nivel in CRITICAL HIGH MEDIUM LOW UNKNOWN; do
-              cantidad=$(jq --arg nivel "$nivel" \
-                '[.Results[]?.Vulnerabilities[]? | select(.Severity == $nivel)] | length' \
-                "$archivo")
+          # Proceso 2: resumen de vulnerabilidades de ambas imagenes
+          (
+            {
+              echo "### Trivy - Vulnerabilidades con correccion disponible"
+              echo ""
+              echo "| Imagen | CRITICAL | HIGH | MEDIUM | LOW | UNKNOWN |"
+              echo "|---|---:|---:|---:|---:|---:|"
+            } >> "$GITHUB_STEP_SUMMARY"
 
-              valores+=("$cantidad")
+            for nombre in web api; do
+              if [[ "$nombre" == "web" ]]; then
+                imagen="$WEB_IMAGE"
+              else
+                imagen="$API_IMAGE"
+              fi
+
+              archivo="trivy-${nombre}.json"
+
+              docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v trivy-cache:/root/.cache \
+                -v "$PWD:/workspace:ro" \
+                aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
+                image --scanners vuln --pkg-types os,library \
+                --ignore-unfixed --ignorefile /workspace/.trivyignore \
+                --format json "$imagen" > "$archivo"
+
+              valores=()
+
+              for nivel in CRITICAL HIGH MEDIUM LOW UNKNOWN; do
+                cantidad=$(jq --arg nivel "$nivel" \
+                  '[.Results[]?.Vulnerabilities[]? | select(.Severity == $nivel)] | length' \
+                  "$archivo")
+
+                valores+=("$cantidad")
+              done
+
+              printf '| %s | %s | %s | %s | %s | %s |\n' \
+                "$nombre" "${valores[@]}" >> "$GITHUB_STEP_SUMMARY"
             done
+          ) &
+          pid_trivy=$!
 
-            printf '| %s | %s | %s | %s | %s | %s |\n' \
-              "$nombre" "${valores[@]}" >> "$GITHUB_STEP_SUMMARY"
-          done
+          # Esperar ambos procesos y detectar cualquier fallo
+          fallo=0
+          wait "$pid_semgrep" || fallo=1
+          wait "$pid_trivy" || fallo=1
+
+          if [[ "$fallo" -ne 0 ]]; then
+            echo "ERROR: fallo Semgrep o el resumen Trivy"
+            exit 1
+          fi
+
+          echo "Semgrep y resumen Trivy completados correctamente"
 
       - name: Generar reportes SARIF de Trivy
         run: |
@@ -316,17 +342,30 @@ jobs:
             test -s "$RUNNER_TEMP/trivy-${servicio}.sarif"
           done
 
-      - name: Publicar Trivy web en Code scanning
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
-        with:
-          sarif_file: ${{ runner.temp }}/trivy-web.sarif
-          category: trivy-web
+      - name: Preparar reportes SARIF para una sola subida
+        run: |
+          set -euo pipefail
 
-      - name: Publicar Trivy API en Code scanning
+          mkdir -p "$RUNNER_TEMP/sarif"
+
+          for nombre in semgrep trivy-web trivy-api; do
+            jq --arg categoria "$nombre" '
+              .runs |= map(
+                .automationDetails = (.automationDetails // {})
+                | .automationDetails.id = ($categoria + "/")
+              )
+            ' "$RUNNER_TEMP/${nombre}.sarif" \
+              > "$RUNNER_TEMP/sarif/${nombre}.sarif"
+
+            jq -e '(.runs | length) >= 1' \
+              "$RUNNER_TEMP/sarif/${nombre}.sarif" > /dev/null
+          done
+
+      - name: Publicar resultados SARIF en Code scanning
         uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
         with:
-          sarif_file: ${{ runner.temp }}/trivy-api.sarif
-          category: trivy-api
+          sarif_file: ${{ runner.temp }}/sarif
+          wait-for-processing: false
 
       - name: Analizar ambas imagenes con Trivy
         run: |
