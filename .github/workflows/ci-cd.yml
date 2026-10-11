@@ -199,8 +199,15 @@ jobs:
     permissions:
       contents: read
       packages: read
+      security-events: write
 
     steps:
+      - name: Obtener codigo para analisis
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
       - name: Definir imagenes del commit
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -221,6 +228,26 @@ jobs:
 
           docker pull "$WEB_IMAGE"
           docker pull "$API_IMAGE"
+
+      - name: Analizar JavaScript con Semgrep
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "$PWD:/src:ro" \
+            -v "$RUNNER_TEMP:/out" \
+            -w /src \
+            semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b \
+            semgrep scan --metrics=off \
+            --config .semgrep.yml \
+            --sarif --output /out/semgrep.sarif \
+            api/app.js libro-de-visitas.js scripts
+          test -s "$RUNNER_TEMP/semgrep.sarif"
+
+      - name: Publicar SAST en Code scanning
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
+        with:
+          sarif_file: ${{ runner.temp }}/semgrep.sarif
+          category: semgrep
 
       - name: Resumen de Trivy por severidad
         run: |
@@ -245,9 +272,11 @@ jobs:
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v trivy-cache:/root/.cache \
+            -v "$PWD:/workspace:ro" \
+              -v "$PWD:/workspace:ro" \
               aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
               image --scanners vuln --pkg-types os,library \
-              --ignore-unfixed --format json "$imagen" > "$archivo"
+              --ignore-unfixed --ignorefile /workspace/.trivyignore --format json "$imagen" > "$archivo"
 
             valores=()
 
@@ -263,6 +292,42 @@ jobs:
               "$nombre" "${valores[@]}" >> "$GITHUB_STEP_SUMMARY"
           done
 
+      - name: Generar reportes SARIF de Trivy
+        run: |
+          set -euo pipefail
+          for servicio in web api; do
+            if [[ "$servicio" == "web" ]]; then
+              imagen="$WEB_IMAGE"
+            else
+              imagen="$API_IMAGE"
+            fi
+
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v trivy-cache:/root/.cache \
+              -v "$PWD:/workspace:ro" \
+              -v "$RUNNER_TEMP:/out" \
+              aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
+              image --scanners vuln --pkg-types os,library \
+              --ignore-unfixed --ignorefile /workspace/.trivyignore \
+              --format sarif --output "/out/trivy-${servicio}.sarif" \
+              "$imagen"
+
+            test -s "$RUNNER_TEMP/trivy-${servicio}.sarif"
+          done
+
+      - name: Publicar Trivy web en Code scanning
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
+        with:
+          sarif_file: ${{ runner.temp }}/trivy-web.sarif
+          category: trivy-web
+
+      - name: Publicar Trivy API en Code scanning
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
+        with:
+          sarif_file: ${{ runner.temp }}/trivy-api.sarif
+          category: trivy-api
+
       - name: Analizar ambas imagenes con Trivy
         run: |
           set -euo pipefail
@@ -271,18 +336,20 @@ jobs:
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v trivy-cache:/root/.cache \
+            -v "$PWD:/workspace:ro" \
             aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
             image --scanners vuln --pkg-types os,library \
-            --severity CRITICAL --ignore-unfixed --exit-code 1 \
+            --severity CRITICAL --ignore-unfixed --ignorefile /workspace/.trivyignore --exit-code 1 \
             "$WEB_IMAGE"
 
           echo "Escaneando imagen API"
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v trivy-cache:/root/.cache \
+            -v "$PWD:/workspace:ro" \
             aquasec/trivy@sha256:a22415a38938a56c379387a8163fcb0ce38b10ace73e593475d3658d578b2436 \
             image --scanners vuln --pkg-types os,library \
-            --severity CRITICAL --ignore-unfixed --exit-code 1 \
+            --severity CRITICAL --ignore-unfixed --ignorefile /workspace/.trivyignore --exit-code 1 \
             "$API_IMAGE"
       - name: Cerrar sesion de GHCR
         if: always()
