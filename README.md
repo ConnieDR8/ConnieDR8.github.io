@@ -351,59 +351,373 @@ Inicialmente PostgreSQL no declaraba explícitamente un usuario no privilegiado 
   ```
 - **Qué no me funcionó:**
   Usar un secreto personal de Codespaces no era una solución adecuada para la evaluación, porque esos secretos pertenecen a mi cuenta y no estarían disponibles cuando otra persona cree un Codespace del repositorio. Por eso se optó por generar automáticamente una credencial local de desarrollo.
-## Bitácora LAB-03
+
+## Bitácora LAB-03 — Pipeline CI/CD
+
+En este laboratorio implementé un pipeline de integración y entrega continua utilizando GitHub Actions. El objetivo fue automatizar la construcción, las pruebas, la publicación de imágenes Docker, los análisis de seguridad y la verificación del sitio antes de desplegarlo en GitHub Pages.
+
+El pipeline está organizado en seis jobs: `build`, `test`, `package`, `security`, `smoke` y `deploy-prod`. Los primeros cinco validan los cambios, mientras que el despliegue requiere aprobación manual y solamente se ejecuta desde `main`.
+
+**Repositorio:** https://github.com/ConnieDR8/ConnieDR8.github.io
+
+**Sitio:** https://conniedr8.github.io/
+
+**Workflow:** `.github/workflows/ci-cd.yml`
+
+### Reto 1: Pipeline rápido
+
+**Decisión:**
+
+Optimicé el pipeline utilizando caché de capas Docker con Buildx, una configuración específica de Docker Compose para CI y la ejecución paralela de Semgrep y Trivy. Además, agrupé la publicación de los reportes SARIF para reducir el tiempo dedicado a enviarlos a GitHub.
+
+**Alternativas que evalué:**
+
+- Construir las imágenes de integración con acciones Buildx independientes o directamente mediante Docker Compose.
+- Publicar los reportes SARIF por separado o agruparlos.
+- Ejecutar Semgrep y Trivy secuencialmente o en paralelo.
+- Mantener los intervalos originales de healthcheck o configurar verificaciones más frecuentes para CI.
+
+**Por qué elegí esta solución:**
+
+Mi objetivo era reducir los tiempos sin eliminar pruebas ni controles de seguridad. Utilicé Buildx para reutilizar capas durante la publicación de imágenes y ejecuté simultáneamente los análisis que no dependen entre sí.
+
+También agregué `compose.ci.yaml` para ajustar los intervalos de healthcheck sin modificar el funcionamiento habitual de Docker Compose fuera de CI.
+
+**Cómo lo verifiqué:**
+
+Comparé los tiempos reales de los cinco jobs obligatorios, sin incluir el despliegue ni la espera de aprobación.
+
+| Job | Antes de R1 | Después de R1 |
+|---|---:|---:|
+| build | 13 s | 18 s |
+| test | 56 s | 50 s |
+| package | 37 s | 26 s |
+| security | 70 s | 31 s |
+| smoke | 16 s | 7 s |
+| **Total** | **192 s** | **132 s** |
+
+La reducción respecto a la versión inmediatamente anterior a R1 fue:
+
+**(192 - 132) / 192 × 100 = 31.25 %**
+
+**Evidencias:**
+
+- [PR #38 — Optimización del pipeline](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/38)
+- [Antes de R1 — Run #46](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/38107314736)
+- [Después de R1 — Run #56](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/38111994418)
+
+**Consideración sobre la primera versión funcional:**
+
+La primera versión funcional histórica, registrada en el [run #9](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/37958394200), tardó aproximadamente 117 segundos en los cinco jobs anteriores al despliegue.
+
+Esa versión todavía no incluía las pruebas completas de integración de R3 ni los análisis adicionales de R2. Por ello, aunque conseguí una reducción del 31.25 % respecto al pipeline inmediatamente anterior a R1, no puedo afirmar una reducción equivalente respecto a la primera versión funcional histórica.
+
+**Qué no me funcionó:**
+
+Mi primera optimización agregó tres construcciones Buildx consecutivas al job `test`. En lugar de reducir el tiempo, este aumentó de 56 a 127 segundos.
+
+Lo solucioné eliminando esas construcciones y permitiendo que Docker Compose gestionara directamente las imágenes.
+
+También aparecieron advertencias de configuraciones faltantes en Code Scanning después de agrupar los reportes SARIF. Lo corregí manteniendo las categorías originales de cada análisis.
+
+Finalmente, ejecuté Semgrep y Trivy en paralelo y ajusté `start_interval` en los healthchecks. La última ejecución terminó correctamente con los análisis de seguridad y pruebas aprobados.
+
+**Fuentes consultadas:**
+
+- Docker Docs — Build cache y Docker Buildx.
+- Docker Docs — Compose healthcheck.
+- GitHub Docs — GitHub Actions y Code Scanning.
+
+### Reto 2: Análisis estático y reportes SARIF
+
+**Decisión:**
+
+Incorporé Semgrep para analizar el código JavaScript y configuré Trivy para generar reportes SARIF de las imágenes web y API.
+
+Los resultados se publican automáticamente en la sección Code Scanning del repositorio.
+
+También creé `.semgrep.yml` para definir reglas de análisis y `.trivyignore` para documentar una excepción temporal de vulnerabilidad.
+
+**Alternativas que evalué:**
+
+- Revisar los resultados únicamente en los logs o publicarlos en Code Scanning.
+- Ejecutar el análisis estático fuera del pipeline o integrarlo directamente en GitHub Actions.
+- Ignorar todas las vulnerabilidades o conservar el bloqueo por severidad crítica.
+
+**Por qué elegí esta solución:**
+
+Semgrep y Trivy permiten analizar aspectos distintos de la seguridad. Semgrep revisa patrones potencialmente peligrosos en el código fuente, mientras que Trivy identifica vulnerabilidades en los paquetes de las imágenes Docker.
+
+Publicar sus resultados en GitHub facilita revisar los hallazgos y mantener evidencia de los análisis realizados.
+
+**Cómo lo verifiqué:**
+
+Semgrep detectó una advertencia relacionada con la exposición de mensajes internos de error en `api/app.js`.
+
+Trivy registró vulnerabilidades HIGH y MEDIUM en la imagen web, visibles en Code Scanning.
+
+El pipeline también conserva el análisis con `--severity CRITICAL --exit-code 1` para impedir que continúe cuando Trivy detecta vulnerabilidades críticas aplicables que no están exceptuadas.
+
+El archivo `.trivyignore` contiene una excepción temporal documentada para una vulnerabilidad MEDIUM; no desactiva los análisis generales.
+
+**Evidencias:**
+
+- [PR #37 — Semgrep y reportes SARIF](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/37)
+- [Run #46 — R2 integrado en main](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/38107314736)
+- [Code scanning del repositorio](https://github.com/ConnieDR8/ConnieDR8.github.io/security/code-scanning)
+
+**Qué no me funcionó:**
+
+Durante R1 cambié la subida de tres reportes SARIF independientes a una publicación conjunta. GitHub comenzó a mostrar advertencias porque no encontraba las configuraciones de los análisis anteriores.
+
+Identifiqué que las categorías no conservaban el formato original. Lo corregí asignando los identificadores `semgrep/`, `trivy-web/` y `trivy-api/`.
+
+**Fuentes consultadas:**
+
+- Documentación oficial de Semgrep.
+- Documentación oficial de Trivy.
+- GitHub Docs — Code Scanning y SARIF.
+
+### Reto 3: Integración con Docker Compose
+
+**Decisión:**
+
+Incorporé pruebas de integración utilizando Docker Compose para ejecutar conjuntamente los servicios `db`, `api` y `web`.
+
+Las comprobaciones se ejecutan mediante `scripts/integracion-compose.mjs` dentro del job `test`.
+
+**Alternativas que evalué:**
+
+- Mantener únicamente las pruebas unitarias de Vitest y Jest.
+- Levantar los tres servicios y realizar solicitudes HTTP reales.
+- Comprobar solamente que los contenedores iniciaran o verificar también el comportamiento de la API.
+
+**Por qué elegí esta solución:**
+
+Las pruebas unitarias permiten comprobar componentes aislados, pero no garantizan que los servicios funcionen correctamente entre sí.
+
+Con Docker Compose puedo verificar la comunicación entre PostgreSQL, la API y la web, además de comprobar que los endpoints respondan como se espera.
+
+**Cómo lo verifiqué:**
+
+El script realizó cinco comprobaciones:
+
+1. `GET /api/health`: HTTP 200.
+2. `POST` con datos válidos: HTTP 201.
+3. `POST` sin nombre: HTTP 400.
+4. `POST` con un mensaje demasiado largo: HTTP 400.
+5. `GET /api/mensajes`: recuperación del mensaje creado.
+
+Al finalizar, el workflow ejecuta `docker compose down -v --remove-orphans` para eliminar los contenedores y el volumen temporal.
+
+**Prueba de fallo controlado:**
+
+Para demostrar que el pipeline realmente detectaba un error, modifiqué temporalmente la respuesta del endpoint de creación de mensajes: devolvía HTTP 202 en lugar del HTTP 201 esperado.
+
+El job `test` detectó la diferencia y terminó en rojo. Posteriormente restauré el comportamiento esperado y confirmé que las verificaciones volvían a aprobarse.
+
+La rama utilizada para provocar el fallo se cerró sin integrarse en `main`.
+
+**Evidencias:**
+
+- [PR #32 — Integración con Compose](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/32)
+- [PR #33 — Fallo controlado](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/33)
+- [Run en rojo — Fallo controlado](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/37970089234)
+- [Run en verde — Comportamiento restaurado](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/37972738407)
+
+**Qué no me funcionó:**
+
+El fallo HTTP 202 fue provocado intencionalmente para demostrar la capacidad del pipeline de detectar regresiones. La prueba exigía HTTP 201 y rechazó la respuesta incorrecta.
+
+**Fuentes consultadas:**
+
+- Docker Docs — Docker Compose.
+- Docker Docs — Healthchecks.
+- GitHub Docs — GitHub Actions.
 
 ### Reto 4: Mínimo privilegio y cadena de suministro
 
-- **Decisión:** Definí los permisos necesarios por job, fijé las GitHub Actions mediante SHA y configuré Dependabot para revisar sus actualizaciones semanalmente.
-- **Alternativas que evalué:** Utilizar permisos generales para todos los jobs o definir permisos específicos; usar etiquetas de versión como `@v4` o SHA completos.
-- **Por qué elegí esta:** Los permisos específicos reducen el acceso disponible para cada job. Los SHA permiten identificar exactamente qué versión de una acción ejecuta el pipeline, mientras que Dependabot facilita mantenerla actualizada.
-- **Fuentes consultadas:**
-  - https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication
-  - https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
-- **Cómo lo verifiqué:** Los cinco jobs aprobaron en https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/37960482116
-- **Qué no me funcionó:** No se presentaron errores de ejecución en este reto. La validación del funcionamiento completo de Dependabot dependerá de sus futuras comprobaciones programadas.
+**Decisión:**
 
-### Pregunta B3: Cómo llega el sitio al job test
+Definí permisos específicos para cada job, fijé las GitHub Actions mediante SHA completos y configuré Dependabot para buscar actualizaciones.
 
-- **Decisión:** Reconstruir `_site/` en el job `test` usando el mismo script y commit que utiliza `build`.
-- **Alternativas que evalué:** Descargar el artefacto generado por `build` o reconstruir el sitio en `test`.
-- **Por qué elegí esta:** La reconstrucción simplifica la configuración y permite comprobar los mismos archivos publicados a partir del mismo código.
-- **Cómo lo verifiqué:** Vitest y Jest aprobaron en el pipeline.
-- **Qué no me funcionó:** Inicialmente Vitest intentaba ejecutar también las pruebas de Jest de la API. Se corrigió limitando Vitest a `tests/**/*.test.js`.
+**Alternativas que evalué:**
+
+- Utilizar permisos generales o restringirlos por job.
+- Referenciar las acciones con etiquetas como `@v4` o fijarlas mediante SHA.
+- Actualizar dependencias manualmente o mediante Dependabot.
+
+**Por qué elegí esta solución:**
+
+Los permisos específicos reducen el acceso de cada job a los recursos que realmente necesita.
+
+Por ejemplo, `package` requiere publicar imágenes en GHCR, `security` necesita escribir reportes en Code Scanning y `deploy-prod` necesita permisos para publicar en GitHub Pages.
+
+Los SHA completos identifican una versión exacta de cada acción.
+
+**Cómo lo verifiqué:**
+
+Comprobé la configuración de permisos y las referencias SHA del workflow.
+
+También confirmé que Dependabot creó propuestas automáticas de actualización para diferentes GitHub Actions.
+
+**Evidencias:**
+
+- [PR #26 — Permisos y Dependabot](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/26)
+- [Run de validación de R4](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/37962879304)
+- [PR de Dependabot](https://github.com/ConnieDR8/ConnieDR8.github.io/pulls)
+
+**Qué no me funcionó:**
+
+No se presentaron fallos importantes durante la implementación. Las actualizaciones propuestas por Dependabot quedaron pendientes de revisión para evitar modificar varias versiones de acciones mientras todavía se validaba el laboratorio.
+
+**Fuentes consultadas:**
+
+- GitHub Docs — GITHUB_TOKEN.
+- GitHub Docs — Seguridad de GitHub Actions.
+- GitHub Docs — Dependabot.
+
+### Reto 5: Verificación postdeploy y rollback
+
+**Decisión:**
+
+Agregué una verificación automática después de desplegar el sitio en GitHub Pages y realicé una prueba real de rollback usando `git revert`.
+
+**Alternativas que evalué:**
+
+- Considerar el despliegue exitoso únicamente por finalizar el job.
+- Comprobar la URL real después de publicar.
+- Restaurar archivos manualmente o utilizar una reversión registrada en Git.
+
+**Por qué elegí esta solución:**
+
+Un despliegue puede finalizar sin errores y aun así publicar una versión que no funcione como se espera.
+
+La verificación postdeploy permite comprobar el sitio publicado. Por otro lado, `git revert` deja registrada la recuperación y permite pasar nuevamente por los controles del pipeline.
+
+**Cómo lo verifiqué:**
+
+Implementé `scripts/verificar-produccion.mjs`, que revisa:
+
+- La respuesta HTTP 200 de la página publicada.
+- La presencia del nombre del perfil.
+- El comportamiento del libro de visitas cuando GitHub Pages devuelve HTTP 404 para `/api/mensajes`.
+
+Después realicé un rollback real:
+
+1. Integré una modificación visual temporal.
+2. Aprobé su despliegue en producción.
+3. Confirmé que el cambio se publicó.
+4. Creé una reversión con `git revert`.
+5. Abrí un nuevo Pull Request.
+6. Esperé las verificaciones obligatorias.
+7. Integré la reversión y aprobé el despliegue.
+8. Confirmé que el sitio recuperó su contenido anterior.
+
+**Evidencias:**
+
+- [PR #34 — Verificación postdeploy](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/34)
+- [PR #35 — Cambio temporal](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/35)
+- [PR #36 — Rollback](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/36)
+- [Run final con rollback correcto](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/37980164188)
+
+**Procedimiento de recuperación:**
+
+Si detecto un error en producción, identifico el commit responsable, creo una rama desde `main`, ejecuto `git revert` y abro un Pull Request.
+
+Después de que el pipeline apruebe los controles, integro la reversión, autorizo el despliegue y verifico nuevamente la página publicada.
+
+**Qué no me funcionó:**
+
+No se presentó un fallo inesperado. La modificación temporal fue intencional y permitió comprobar que el procedimiento de reversión funcionaba realmente.
+
+**Fuentes consultadas:**
+
+- GitHub Docs — Environments y despliegues.
+- Git — Documentación de `git revert`.
+- GitHub Docs — GitHub Pages.
 
 ### Reto 6: El pipeline se explica solo
 
-- **Decisión:** Generar un resumen de pruebas desde los reportes JSON de Vitest y Jest, y mostrar las vulnerabilidades de Trivy agrupadas por severidad. Agregué también el badge de CI/CD al README.
-- **Alternativas que evalué:** Mostrar solamente los logs de cada job o utilizar `GITHUB_STEP_SUMMARY`. Para Trivy, mostrar solo vulnerabilidades críticas o incluir todas las severidades.
-- **Por qué elegí esta:** El resumen permite revisar rápidamente las pruebas y vulnerabilidades antes de aprobar producción, sin buscar cada resultado dentro de los logs.
-- **Fuentes consultadas:**
-  - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
-  - https://vitest.dev/guide/reporters
-  - https://trivy.dev/latest/docs/configuration/reporting/
-- **Cómo lo verifiqué:** Pendiente de añadir el enlace al run de Actions donde aparezcan los resúmenes y el badge actualizado.
-- **Qué no me funcionó:** Pendiente de completar después de ejecutar y validar el pipeline.
+**Decisión:**
 
-## Recuperacion de produccion - R5
+Incorporé resúmenes automáticos mediante `GITHUB_STEP_SUMMARY` y un badge de estado del workflow en el README.
 
-El job `deploy-prod` verifica la URL publicada despues de desplegar.
+Los resúmenes incluyen los resultados de Vitest y Jest, además de las vulnerabilidades identificadas por Trivy y agrupadas según su severidad.
 
-Comprueba HTTP 200, el nombre del perfil y que el libro de visitas
-permanece oculto cuando GitHub Pages devuelve 404 para `/api/mensajes`.
+**Alternativas que evalué:**
 
-### Procedimiento de rollback
+- Revisar únicamente los logs individuales.
+- Generar un resumen de las pruebas y los análisis.
+- Mostrar solo vulnerabilidades críticas o incluir todas las severidades.
 
-Si una version publicada presenta errores:
+**Por qué elegí esta solución:**
 
-1. Identificar el commit que introdujo el problema.
-2. Crear una rama nueva desde `main` actualizada.
-3. Ejecutar `git revert` sobre el commit defectuoso.
-4. Abrir un Pull Request con esa reversion.
-5. Esperar los controles obligatorios de CI/CD.
-6. Integrar el PR y aprobar el despliegue en `github-pages`.
-7. Revisar el nuevo run y confirmar que el sitio funciona.
+El resumen facilita revisar el estado general del pipeline sin tener que recorrer todos los logs.
 
-Se prefiere `git revert` frente a modificar manualmente produccion:
-la reversion queda registrada en Git y pasa nuevamente por el pipeline.
+El badge también permite identificar desde el README si el workflow de `main` está funcionando correctamente.
 
-**Prueba de rollback:** pendiente de ejecutar y enlazar.
+**Cómo lo verifiqué:**
+
+El resumen de pruebas mostró:
+
+| Herramienta | Aprobadas | Fallidas |
+|---|---:|---:|
+| Vitest — Sitio | 10 | 0 |
+| Jest — API | 2 | 0 |
+| **Total** | **12** | **0** |
+
+Trivy también generó una tabla con las vulnerabilidades de las imágenes web y API clasificadas por severidad.
+
+**Evidencias:**
+
+- [PR #31 — Resúmenes y badge](https://github.com/ConnieDR8/ConnieDR8.github.io/pull/31)
+- [Run de validación de R6](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/runs/37965520129)
+- [Estado del workflow](https://github.com/ConnieDR8/ConnieDR8.github.io/actions/workflows/ci-cd.yml)
+
+**Qué no me funcionó:**
+
+Los logs permitían comprobar los resultados, pero no ofrecían una vista rápida. Para solucionarlo, utilicé reportes JSON y generé tablas en `GITHUB_STEP_SUMMARY`.
+
+**Fuentes consultadas:**
+
+- GitHub Actions — Workflow Commands.
+- Vitest — Reporters.
+- Trivy — Reporting.
+
+### Decisión adicional B3: Construcción del sitio en test
+
+**Decisión:**
+
+El job `test` reconstruye `_site/` mediante `npm run build`, utilizando el mismo commit que `build`.
+
+**Alternativas que evalué:**
+
+- Transferir el artefacto generado por el job `build`.
+- Reconstruir el sitio directamente en `test`.
+
+**Por qué elegí esta solución:**
+
+La reconstrucción mantiene una configuración sencilla y permite comprobar nuevamente el sitio generado desde el mismo código.
+
+**Cómo lo verifiqué:**
+
+Vitest y Jest aprobaron correctamente en las ejecuciones del pipeline.
+
+**Qué no me funcionó:**
+
+Inicialmente Vitest intentaba ejecutar también pruebas pertenecientes a Jest. Lo corregí limitando Vitest a los archivos de prueba correspondientes al sitio.
+
+### Conclusión del LAB-03
+
+Al finalizar el laboratorio, implementé un pipeline CI/CD que construye el proyecto, ejecuta pruebas unitarias y de integración, publica imágenes Docker versionadas en GHCR, analiza vulnerabilidades y realiza verificaciones antes del despliegue.
+
+También comprobé el comportamiento del pipeline ante un error intencional y ejecuté un procedimiento real de rollback para recuperar una versión anterior del sitio.
+
+La estrategia implementada corresponde a **Continuous Delivery**, porque `deploy-prod` requiere aprobación manual del environment `github-pages`.
+
+Para convertirla en Continuous Deployment tendría que retirar la aprobación humana obligatoria del environment, manteniendo la condición de despliegue desde `main` y todas las verificaciones del pipeline.
+
+En R1 conseguí reducir el tiempo de los cinco jobs obligatorios de 192 a 132 segundos, una mejora del 31.25 % respecto al pipeline anterior al reto. La primera versión funcional histórica tenía un alcance menor, por lo que esa comparación se documentó por separado.
+
+El resultado es un pipeline con pruebas automatizadas, controles de seguridad, trazabilidad, publicación controlada y un procedimiento de recuperación verificado.
