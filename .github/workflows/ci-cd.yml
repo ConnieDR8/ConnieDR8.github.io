@@ -333,7 +333,7 @@ jobs:
             jq --arg categoria "$nombre" '
               .runs |= map(
                 .automationDetails = (.automationDetails // {})
-                | .automationDetails.id = $categoria
+                | .automationDetails.id = ($categoria + "/")
               )
             ' "$RUNNER_TEMP/${nombre}.sarif" \
               > "$RUNNER_TEMP/sarif/${nombre}.sarif"
