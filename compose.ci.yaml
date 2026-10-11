@@ -1,0 +1,22 @@
+services:
+  db:
+    image: lab03integracion-db:latest
+    healthcheck:
+      interval: 1s
+      timeout: 3s
+      retries: 20
+      start_period: 1s
+  api:
+    image: lab03integracion-api:latest
+    healthcheck:
+      interval: 1s
+      timeout: 3s
+      retries: 20
+      start_period: 1s
+  web:
+    image: lab03integracion-web:latest
+    healthcheck:
+      interval: 1s
+      timeout: 3s
+      retries: 20
+      start_period: 1s
