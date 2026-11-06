@@ -5,3 +5,27 @@ node_modules/
 _site/
 vitest-report.json
 api/jest-report.json
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+*.tfplan.*
+*.tfplan.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# Terraform local configuration
+.terraformrc
+terraform.rc
+# Credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
