@@ -14,7 +14,7 @@ Implementar y administrar infraestructura en Google Cloud mediante Terraform, ut
 | Laboratorio | Puntaje | Captura | Carpeta | Estado |
 |---|---|---|---|---|
 | GSP233 | 100/100 (3 puntos) | [Ver evidencia](evidencia/gsp233.png) | [01-gsp233](01-gsp233/) | Completado |
-| GSP497 | Pendiente | [Ver evidencia](evidencia/gsp497.png) | [02-gsp497](02-gsp497/) | Pendiente |
+| GSP497 | Por confirmar | [Ver evidencia](evidencia/gsp497.png) | [02-gsp497](02-gsp497/) | Ejecucion completada; puntuacion pendiente de verificar |
 | GSP345 | Pendiente | [Ver evidencia](evidencia/gsp345.png) | [03-gsp345](03-gsp345/) | Pendiente |
 
 ## Bitacora
@@ -115,11 +115,149 @@ Verificaria el Project ID desde el inicio y conservaria los archivos de evidenci
 
 ### GSP497 - Cloud Operations for GKE
 
-**Actividades:** Pendiente.
+**Fecha de ejecucion:** 06/11/2026  
+**Puntuacion Google Skills:** 100/100
 
-**Dificultades:** Pendiente.
+**Objetivo:**
 
-**Que cambiaria:** Pendiente.
+Implementar un cluster de Google Kubernetes Engine (GKE) con Terraform, desplegar una aplicacion de demostracion, verificar sus metricas en Cloud Monitoring y eliminar los recursos al finalizar.
+
+**Actividades realizadas:**
+
+1. Se inicio GSP497 utilizando una cuenta temporal de Google Skills.
+2. Se descargo y descomprimio el proyecto oficial `gke-monitoring-tutorial`.
+3. Se reviso la estructura de Terraform y el script `scripts/create.sh`.
+4. Se generaron las variables de configuracion para el laboratorio.
+5. Se ejecuto `terraform init` para inicializar los providers.
+6. Se genero y reviso `plan-inicial.txt` antes del despliegue.
+7. Se ejecuto `make create` para implementar la infraestructura.
+8. Se ejecuto `make validate` para verificar la aplicacion.
+9. Se reviso la politica `Prometheus mem alloc` y sus metricas en Cloud Monitoring.
+10. Se ejecuto `make teardown` y se conservo su salida en `destroy.txt`.
+
+**Configuracion utilizada:**
+
+| Parametro | Valor |
+|---|---|
+| Herramienta IaC | Terraform |
+| Provider Google | 8.10.0 |
+| Proyecto temporal | `qwiklabs-gcp-01-ff8305ce0cd6` |
+| Zona | `us-east1-c` |
+| Cluster | `stackdriver-monitoring-tutorial` |
+| Politica de alerta | `Prometheus mem alloc` |
+| Condicion | `mem alloc above 12` |
+| Duracion de evaluacion | 60 segundos |
+
+**Inicializacion y planificacion:**
+
+Se ejecuto:
+
+~~~bash
+cd ~/gke-monitoring-tutorial/terraform
+terraform init -input=false
+terraform plan -input=false -no-color > plan-inicial.txt 2>&1
+~~~
+
+El plan mostro:
+
+~~~text
+Plan: 5 to add, 0 to change, 0 to destroy.
+~~~
+
+Se reviso que no existieran modificaciones ni destrucciones previstas.
+
+El archivo se conserva en `02-gsp497/plan-inicial.txt`.
+
+**Despliegue y validacion:**
+
+Desde la carpeta principal del proyecto se ejecutaron:
+
+~~~bash
+make create
+make validate
+~~~
+
+La validacion devolvio:
+
+~~~text
+Fetching cluster endpoint and auth data.
+kubeconfig entry generated for stackdriver-monitoring-tutorial.
+App is deployed.
+~~~
+
+Este resultado confirmo que la aplicacion se encontraba desplegada.
+
+**Verificacion de Cloud Monitoring:**
+
+Se accedio a la politica `Prometheus mem alloc` en Google Cloud Monitoring.
+
+Se comprobo que la politica estaba habilitada, que existia la condicion `mem alloc above 12` y que se visualizaban series temporales de metricas.
+
+**Evidencia de Monitoring:**
+
+![GSP497 - Politica Prometheus mem alloc y metricas](evidencia/gsp497_monitoring.png)
+
+**Destruccion de infraestructura:**
+
+La guia del laboratorio utiliza `make teardown` para eliminar los recursos.
+
+Para conservar la evidencia exigida por la rubrica se ejecuto:
+
+~~~bash
+make teardown 2>&1 | tee terraform/destroy.txt
+~~~
+
+El resultado final fue:
+
+~~~text
+Plan: 0 to add, 0 to change, 5 to destroy.
+
+Destroy complete! Resources: 5 destroyed.
+~~~
+
+Se confirmo la eliminacion de los cinco recursos administrados por Terraform.
+
+El registro completo se conserva en `02-gsp497/destroy.txt`.
+
+**Archivos entregados:**
+
+| Archivo | Descripcion |
+|---|---|
+| `02-gsp497/outputs.tf` | Salidas de la infraestructura. |
+| `02-gsp497/provider.tf` | Configuracion del provider. |
+| `02-gsp497/resources.tf` | Recursos de infraestructura y Monitoring. |
+| `02-gsp497/variables.tf` | Variables utilizadas en la configuracion. |
+| `02-gsp497/versions.tf` | Requisitos de version de Terraform. |
+| `02-gsp497/plan-inicial.txt` | Plan generado antes del despliegue. |
+| `02-gsp497/destroy.txt` | Registro de la eliminacion de recursos. |
+
+**Evidencia de puntuacion:**
+
+![GSP497 - Resultado del laboratorio](evidencia/gsp497.png)
+
+**Dificultades:**
+
+Se detecto que el comando `make create` ejecutaba internamente `terraform apply` mediante `scripts/create.sh`, lo que podia impedir guardar el plan de forma independiente antes del despliegue.
+
+Durante la preparacion se interrumpio una primera invocacion de `make create`. Posteriormente se confirmo que las variables de Terraform se habian generado.
+
+**Soluciones aplicadas:**
+
+Se revisaron el Makefile y `scripts/create.sh`, se inicializo Terraform y se genero `plan-inicial.txt` antes de continuar con `make create`.
+
+Para la limpieza, se reviso `scripts/teardown.sh` y se conservo la salida del comando oficial mediante `tee`, sin modificar el script original.
+
+**Que cambiaria:**
+
+Incluiría en el flujo de trabajo la generación automática de plan-inicial.txt antes del despliegue y de destroy.txt durante la limpieza. Esto permitiría mantener un registro completo de las operaciones sin depender de comandos adicionales y facilitaría la revisión de las evidencias.
+
+**Uso de IA**
+
+ChatGPT se utilizo para interpretar los scripts del proyecto, identificar el momento correcto para generar el plan, revisar los cinco recursos previstos y preparar el registro de destruccion.
+
+Las operaciones de despliegue, validacion, Monitoring y destruccion fueron realizadas por el estudiante en Google Cloud.
+
+Las capturas y los registros utilizados proceden de la sesion real del laboratorio.
 
 ### GSP345 - Terraform Challenge Lab
 
@@ -131,25 +269,130 @@ Verificaria el Project ID desde el inicio y conservaria los archivos de evidenci
 
 ## Uso de IA
 
-Se utilizo ChatGPT como herramienta de apoyo para interpretar el enunciado, organizar las evidencias y analizar la configuracion Terraform.
+Durante el desarrollo del LAB-05 se utilizó ChatGPT como herramienta de apoyo para interpretar instrucciones, analizar comandos de Terraform, resolver dificultades técnicas y organizar las evidencias solicitadas.
 
-**GSP233:**
+La herramienta no ejecutó directamente los laboratorios. Las operaciones en Google Cloud Shell, las comprobaciones en Google Cloud Console y la recopilación de evidencias fueron realizadas por el estudiante.
 
-- Se consultaron errores relacionados con la configuracion del Project ID.
-- Se analizaron las diferencias entre `terraform init`, `terraform plan` y `terraform apply`.
-- Se reviso el resumen del plan de infraestructura antes de confirmar su ejecucion.
-- Se recibio asistencia para organizar los archivos y redactar la bitacora.
+### GSP233 — Terraform en Google Cloud
 
-**Correcciones realizadas por el estudiante:**
+**¿Qué le pedí?**
 
-- Se identificaron enlaces incorrectos entre los laboratorios GSP233 y GSP497.
-- Se configuro manualmente el Project ID cuando Cloud Shell no lo selecciono automaticamente.
-- Se repitio la ejecucion del GSP233 en una nueva sesion tras finalizar la primera.
-- Se verifico el cluster GKE, el servicio NGINX y la puntuacion 100/100.
-- Se decidio conservar las capturas originales sin modificaciones.
+- Interpretar las instrucciones del laboratorio GSP233 y determinar cómo cumplir los requisitos adicionales del profesor.
+- Explicar el funcionamiento de los comandos `terraform init`, `terraform plan` y `terraform apply`.
+- Ayudar a identificar por qué Cloud Shell no reconocía correctamente el proyecto de Google Cloud.
+- Indicar cómo generar el plan inicial antes de aplicar los cambios.
+- Orientar la validación del clúster GKE y del servicio NGINX.
+- Organizar los archivos Terraform, las capturas y la bitácora del laboratorio.
 
-Todos los recursos fueron desplegados directamente por el estudiante en su sesion de Google Cloud.
+**¿Qué me dio?**
 
-Las evidencias corresponden a resultados autenticos del laboratorio. La asistencia de IA se utilizo para orientacion tecnica y documentacion, no para sustituir la ejecucion practica.
+ChatGPT explicó el orden de ejecución de Terraform y proporcionó comandos para inicializar el proyecto, revisar su configuración y conservar el plan de infraestructura.
 
-Las contribuciones de IA correspondientes a GSP497 y GSP345 se documentaran cuando se ejecuten dichos laboratorios.
+Entre los comandos revisados se encuentran:
+
+```bash
+gcloud config get-value project
+gcloud config set project PROJECT_ID
+terraform init
+terraform plan
+terraform apply
+```
+
+También explicó cómo interpretar el resumen del plan, diferenciando los recursos que se crearían, modificarían o destruirían.
+
+Finalmente, orientó la organización de las evidencias dentro de `lab-05/01-gsp233/` y `lab-05/evidencia/`.
+
+**¿Qué corregí?**
+
+- Detecté que los enlaces de GSP233 y GSP497 se habían confundido inicialmente, por lo que verifiqué el laboratorio correcto.
+- Configuré manualmente el Project ID cuando comprobé que Cloud Shell no lo tenía establecido.
+- Repetí GSP233 en una nueva sesión después de que terminara la primera.
+- Revisé el plan de Terraform antes de confirmar el despliegue.
+- Verifiqué personalmente el clúster GKE y el acceso al servicio NGINX.
+- Conservé las capturas originales y registré la puntuación real de 100/100.
+
+**Resultado:** GSP233 se completó satisfactoriamente y se conservaron los archivos Terraform, el plan inicial y las evidencias del laboratorio.
+
+### GSP497 — Cloud Operations for GKE
+
+**¿Qué le pedí?**
+
+- Revisar el procedimiento de GSP497 e identificar el momento correcto para generar `plan-inicial.txt`.
+- Analizar el funcionamiento de `make create`, ya que este comando ejecutaba Terraform automáticamente.
+- Ayudar a interpretar el plan y comprobar que no existieran destrucciones imprevistas.
+- Explicar cómo verificar el despliegue utilizando `make validate`.
+- Identificar la evidencia adecuada de Google Cloud Monitoring.
+- Analizar `scripts/teardown.sh` para registrar la destrucción de recursos sin modificar el script original.
+- Indicar cómo organizar los archivos y documentar los resultados en el README.
+
+**¿Qué me dio?**
+
+ChatGPT ayudó a interpretar `scripts/create.sh` y a identificar que `make create` ejecutaba internamente `terraform init` y `terraform apply`.
+
+Para generar y conservar el plan antes del despliegue, proporcionó los siguientes comandos:
+
+```bash
+cd ~/gke-monitoring-tutorial/terraform
+terraform init -input=false
+terraform plan -input=false -no-color > plan-inicial.txt 2>&1
+grep -E 'Plan:|Error:' plan-inicial.txt
+```
+
+El plan obtenido indicó:
+
+```text
+Plan: 5 to add, 0 to change, 0 to destroy.
+```
+
+Posteriormente, se utilizaron los comandos oficiales para desplegar y validar la infraestructura:
+
+```bash
+cd ~/gke-monitoring-tutorial
+make create
+make validate
+```
+
+La validación devolvió el mensaje `App is deployed.`
+
+Para documentar la limpieza, ChatGPT propuso ejecutar el comando oficial y guardar simultáneamente su salida:
+
+```bash
+make teardown 2>&1 | tee terraform/destroy.txt
+```
+
+Finalmente, se comprobó el resultado:
+
+```bash
+grep -E 'Destroy complete!|Error:' terraform/destroy.txt
+```
+
+La salida confirmó:
+
+```text
+Destroy complete! Resources: 5 destroyed.
+```
+
+**¿Qué corregí?**
+
+- Interrumpí una primera ejecución de `make create` al identificar que podía comenzar el despliegue sin haber conservado previamente el plan inicial.
+- Comprobé que `terraform.tfvars` se había generado y después ejecuté `terraform init` y `terraform plan` de manera independiente.
+- Revisé que el plan correspondiera al proyecto temporal correcto y contemplara cinco recursos nuevos, sin modificaciones ni destrucciones.
+- Ejecuté nuevamente `make create` y validé la aplicación desplegada.
+- Verifiqué personalmente la política `Prometheus mem alloc` y seleccioné la captura que mostraba sus métricas.
+- Revisé el contenido de `scripts/teardown.sh` antes de ejecutar la limpieza.
+- Conservé el registro auténtico de `terraform destroy`, confirmando la eliminación de los cinco recursos.
+- Organicé los archivos Terraform y las evidencias para incorporarlos al repositorio.
+
+**Resultado:** GSP497 se desplegó, validó y limpió correctamente. Se conservaron el plan inicial, el registro de destrucción y las evidencias de Cloud Monitoring.
+
+### GSP345 — Terraform Challenge Lab
+
+*Pendiente de documentar después de ejecutar el Challenge Lab.*
+
+### Consideraciones sobre el uso de IA
+
+Las respuestas de ChatGPT fueron contrastadas con los comandos ejecutados, los archivos Terraform y los resultados observados en Google Cloud.
+
+Se corrigieron las recomendaciones cuando no coincidían con el estado real del entorno o con las exigencias del laboratorio.
+
+No se utilizaron resultados simulados para sustituir evidencias. Las capturas, los planes y los registros corresponden a ejecuciones reales realizadas por el estudiante.
