@@ -1,0 +1,43 @@
+module.vpc.module.vpc.google_compute_network.network: Refreshing state... [id=projects/qwiklabs-gcp-00-48c6309041bd/global/networks/tf-vpc-605465]
+module.instances.google_compute_instance.tf_instance_2: Refreshing state... [id=projects/qwiklabs-gcp-00-48c6309041bd/zones/us-east1-b/instances/tf-instance-2]
+module.storage.google_storage_bucket.tf_bucket: Refreshing state... [id=tf-bucket-902618]
+module.instances.google_compute_instance.tf_instance_1: Refreshing state... [id=projects/qwiklabs-gcp-00-48c6309041bd/zones/us-east1-b/instances/tf-instance-1]
+module.vpc.module.subnets.google_compute_subnetwork.subnetwork["us-east1/subnet-01"]: Refreshing state... [id=projects/qwiklabs-gcp-00-48c6309041bd/regions/us-east1/subnetworks/subnet-01]
+module.vpc.module.subnets.google_compute_subnetwork.subnetwork["us-east1/subnet-02"]: Refreshing state... [id=projects/qwiklabs-gcp-00-48c6309041bd/regions/us-east1/subnetworks/subnet-02]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # google_compute_firewall.tf_firewall will be created
+  + resource "google_compute_firewall" "tf_firewall" {
+      + creation_timestamp = (known after apply)
+      + destination_ranges = (known after apply)
+      + direction          = "INGRESS"
+      + enable_logging     = (known after apply)
+      + id                 = (known after apply)
+      + name               = "tf-firewall"
+      + network            = "tf-vpc-605465"
+      + priority           = 1000
+      + project            = "qwiklabs-gcp-00-48c6309041bd"
+      + self_link          = (known after apply)
+      + source_ranges      = [
+          + "0.0.0.0/0",
+        ]
+
+      + allow {
+          + ports    = [
+              + "80",
+            ]
+          + protocol = "tcp"
+        }
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.

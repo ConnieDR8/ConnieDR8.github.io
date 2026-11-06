@@ -1,398 +1,298 @@
-# LAB-05: Infraestructura como Codigo con Terraform
+# LAB-05: Terraform en Google Cloud
 
-**Curso:** IF-1116 - Topicos de Tecnologias de Informacion  
-**Semana:** 09  
-**Semestre:** 2026-II  
-**Repositorio:** ConnieDR8/ConnieDR8.github.io
+## Evidencia
 
-## Objetivo
+En este laboratorio utilicé Terraform para crear, modificar y administrar recursos de Google Cloud. Completé los tres laboratorios de Google Skills y guardé los archivos de configuración, planes de ejecución y capturas.
 
-Implementar y administrar infraestructura en Google Cloud mediante Terraform, utilizando configuraciones declarativas, planes de ejecucion, gestion del estado y modulos reutilizables.
+| Laboratorio | Puntaje | Captura | Carpeta |
+|---|---|---|---|
+| GSP233 — Deploy Kubernetes Load Balancer Service with Terraform | 100/100 | `evidencia/gsp233.png` | `01-gsp233/` |
+| GSP497 — Cloud Operations for GKE | 100/100 | `evidencia/gsp497.png` | `02-gsp497/` |
+| GSP345 — Build Infrastructure with Terraform on Google Cloud: Challenge Lab | 100/100 | `evidencia/gsp345.png` | `03-gsp345/` |
 
-## Evidencias
+**Puntaje obtenido en Google Skills:** 100/100 en cada laboratorio.
 
-| Laboratorio | Puntaje | Captura | Carpeta | Estado |
-|---|---|---|---|---|
-| GSP233 | 100/100 (3 puntos) | [Ver evidencia](evidencia/gsp233.png) | [01-gsp233](01-gsp233/) | Completado |
-| GSP497 | Por confirmar | [Ver evidencia](evidencia/gsp497.png) | [02-gsp497](02-gsp497/) | Ejecucion completada; puntuacion pendiente de verificar |
-| GSP345 | Pendiente | [Ver evidencia](evidencia/gsp345.png) | [03-gsp345](03-gsp345/) | Pendiente |
+## Bitácora
 
-## Bitacora
+### GSP233 — Deploy Kubernetes Load Balancer Service with Terraform
 
-### GSP233 - Kubernetes Load Balancer
+**¿Qué hice?**
 
-**Fecha:** 06/11/2026  
-**Resultado:** 100/100
+Trabajé con Terraform para desplegar un clúster de Kubernetes en Google Cloud y publicar una aplicación NGINX mediante un servicio de tipo LoadBalancer.
 
-**Objetivo:** Desplegar un cluster GKE mediante Terraform y publicar NGINX usando un servicio Kubernetes de tipo LoadBalancer.
+Primero revisé los archivos Terraform del laboratorio y generé `plan-inicial.txt` antes de aplicar los cambios. Después ejecuté el despliegue y comprobé que el servicio tuviera una IP externa.
 
-**Actividades realizadas:**
+Finalmente, verifiqué que NGINX respondiera correctamente desde el navegador y guardé las capturas correspondientes.
 
-1. Se inicio el laboratorio en Google Skills utilizando las credenciales temporales.
-2. Se descargo el proyecto oficial `tf-gke-k8s-service-lb`.
-3. Se revisaron los archivos `main.tf`, `k8s.tf` y `versions.tf`.
-4. Se ejecuto `terraform init` para inicializar el entorno.
-5. Se reviso el plan generado por Terraform antes de confirmar su ejecucion.
-6. Se ejecuto `terraform apply` con la region y zona de la sesion.
-7. Se verifico la creacion del cluster GKE y la respuesta HTTP de NGINX.
-8. Se comprobo la puntuacion final del laboratorio: 100/100.
+**¿Qué me costó?**
 
-**Configuracion utilizada:**
+Entender la relación entre Terraform, el clúster de Kubernetes y el servicio LoadBalancer. También tuve que identificar en qué momento debía guardar el plan para que sirviera como evidencia.
 
-| Parametro | Valor |
-|---|---|
-| Proyecto temporal | `qwiklabs-gcp-01-90eee82429b5` |
-| Region | `us-central1` |
-| Zona | `us-central1-c` |
-| Cluster | `tf-gke-k8s` |
-| Nodos | 3 |
-| Provider Google | `8.10.0` |
-| Provider Kubernetes | `1.10.0` |
-| IP externa | `34.133.18.112` |
+**¿Qué cambiaría?**
 
-**Comandos principales:**
+Revisaría primero todos los archivos `.tf` y generaría el plan antes de empezar el despliegue, para tener más claro qué recursos se crearán.
 
-~~~bash
-terraform init
+**Resultado:** Completé GSP233 con 100/100 puntos. Guardé los archivos Terraform, `plan-inicial.txt` y las capturas del clúster y del servicio NGINX.
 
-terraform apply -var="region=us-central1" -var="location=us-central1-c"
+### GSP497 — Cloud Operations for GKE
 
-curl http://34.133.18.112
-~~~
+**¿Qué hice?**
 
-**Revision del plan:**
+Trabajé con un proyecto de monitoreo en Google Kubernetes Engine. Revisé la configuración de Terraform y los comandos del repositorio antes de desplegar la aplicación.
 
-El resultado previo a confirmar el despliegue fue:
+Generé `plan-inicial.txt` para conocer los recursos que se crearían. El plan mostró:
 
-~~~text
-Plan: 7 to add, 0 to change, 0 to destroy.
-~~~
-
-Se verifico que Terraform no planificara modificaciones ni destrucciones.
-
-El contenido se conserva en `01-gsp233/plan-inicial.txt`. El plan fue capturado de la salida de `terraform apply`, antes de introducir `yes`, y no de una ejecucion independiente de `terraform plan`.
-
-**Verificacion del servicio:**
-
-La respuesta HTTP incluyo:
-
-~~~html
-<h1>Welcome to nginx!</h1>
-~~~
-
-Esto confirmo que el servicio NGINX era accesible mediante la IP externa del balanceador.
-
-**Dificultades:**
-
-Durante un primer intento, Cloud Shell no tenia configurado el Project ID y Terraform no pudo identificar el proyecto de Google Cloud. Ademas, se presento un bloqueo temporal del estado durante una operacion de planificacion.
-
-La primera sesion finalizo antes de completar el laboratorio.
-
-**Solucion aplicada:**
-
-Se identifico el problema del proyecto mediante `gcloud config get-value project` y se utilizo `gcloud config set project` para establecer el identificador temporal correcto.
-
-Posteriormente se ejecuto nuevamente el laboratorio en una sesion independiente, se completo el despliegue y se obtuvo 100/100.
-
-**Que cambiaria:**
-
-Verificaria el Project ID desde el inicio y conservaria los archivos de evidencia durante la ejecucion, para evitar depender del tiempo restante de Cloud Shell.
-
-**Archivos entregados:**
-
-- `01-gsp233/main.tf`
-- `01-gsp233/k8s.tf`
-- `01-gsp233/versions.tf`
-- `01-gsp233/plan-inicial.txt`
-
-**Captura del resultado:**
-
-![GSP233 - Puntuacion 100 de 100](evidencia/gsp233.png)
-
-**Captura del cluster GKE:**
-
-![GSP233 - Cluster GKE de tres nodos](evidencia/gsp233-cluster.png)
-
-### GSP497 - Cloud Operations for GKE
-
-**Fecha de ejecucion:** 06/11/2026  
-**Puntuacion Google Skills:** 100/100
-
-**Objetivo:**
-
-Implementar un cluster de Google Kubernetes Engine (GKE) con Terraform, desplegar una aplicacion de demostracion, verificar sus metricas en Cloud Monitoring y eliminar los recursos al finalizar.
-
-**Actividades realizadas:**
-
-1. Se inicio GSP497 utilizando una cuenta temporal de Google Skills.
-2. Se descargo y descomprimio el proyecto oficial `gke-monitoring-tutorial`.
-3. Se reviso la estructura de Terraform y el script `scripts/create.sh`.
-4. Se generaron las variables de configuracion para el laboratorio.
-5. Se ejecuto `terraform init` para inicializar los providers.
-6. Se genero y reviso `plan-inicial.txt` antes del despliegue.
-7. Se ejecuto `make create` para implementar la infraestructura.
-8. Se ejecuto `make validate` para verificar la aplicacion.
-9. Se reviso la politica `Prometheus mem alloc` y sus metricas en Cloud Monitoring.
-10. Se ejecuto `make teardown` y se conservo su salida en `destroy.txt`.
-
-**Configuracion utilizada:**
-
-| Parametro | Valor |
-|---|---|
-| Herramienta IaC | Terraform |
-| Provider Google | 8.10.0 |
-| Proyecto temporal | `qwiklabs-gcp-01-ff8305ce0cd6` |
-| Zona | `us-east1-c` |
-| Cluster | `stackdriver-monitoring-tutorial` |
-| Politica de alerta | `Prometheus mem alloc` |
-| Condicion | `mem alloc above 12` |
-| Duracion de evaluacion | 60 segundos |
-
-**Inicializacion y planificacion:**
-
-Se ejecuto:
-
-~~~bash
-cd ~/gke-monitoring-tutorial/terraform
-terraform init -input=false
-terraform plan -input=false -no-color > plan-inicial.txt 2>&1
-~~~
-
-El plan mostro:
-
-~~~text
+```text
 Plan: 5 to add, 0 to change, 0 to destroy.
-~~~
+```
 
-Se reviso que no existieran modificaciones ni destrucciones previstas.
+Después ejecuté `make create` para desplegar los recursos y `make validate` para comprobar que la aplicación funcionara.
 
-El archivo se conserva en `02-gsp497/plan-inicial.txt`.
+La validación mostró:
 
-**Despliegue y validacion:**
-
-Desde la carpeta principal del proyecto se ejecutaron:
-
-~~~bash
-make create
-make validate
-~~~
-
-La validacion devolvio:
-
-~~~text
-Fetching cluster endpoint and auth data.
-kubeconfig entry generated for stackdriver-monitoring-tutorial.
+```text
 App is deployed.
-~~~
+```
 
-Este resultado confirmo que la aplicacion se encontraba desplegada.
+También revisé las métricas de la aplicación en Google Cloud Monitoring, incluida la política `Prometheus mem alloc`, y guardé la captura.
 
-**Verificacion de Cloud Monitoring:**
+Finalmente, ejecuté la limpieza de recursos y conservé `destroy.txt`.
 
-Se accedio a la politica `Prometheus mem alloc` en Google Cloud Monitoring.
-
-Se comprobo que la politica estaba habilitada, que existia la condicion `mem alloc above 12` y que se visualizaban series temporales de metricas.
-
-**Evidencia de Monitoring:**
-
-![GSP497 - Politica Prometheus mem alloc y metricas](evidencia/gsp497_monitoring.png)
-
-**Destruccion de infraestructura:**
-
-La guia del laboratorio utiliza `make teardown` para eliminar los recursos.
-
-Para conservar la evidencia exigida por la rubrica se ejecuto:
-
-~~~bash
-make teardown 2>&1 | tee terraform/destroy.txt
-~~~
-
-El resultado final fue:
-
-~~~text
-Plan: 0 to add, 0 to change, 5 to destroy.
-
+```text
 Destroy complete! Resources: 5 destroyed.
-~~~
+```
 
-Se confirmo la eliminacion de los cinco recursos administrados por Terraform.
+**¿Qué me costó?**
 
-El registro completo se conserva en `02-gsp497/destroy.txt`.
+Al inicio no tenía claro que `make create` ejecutaba Terraform automáticamente. Por eso tuve que revisar el procedimiento para evitar aplicar cambios antes de guardar el plan.
 
-**Archivos entregados:**
+También me tomó tiempo identificar la captura adecuada de Cloud Monitoring.
 
-| Archivo | Descripcion |
-|---|---|
-| `02-gsp497/outputs.tf` | Salidas de la infraestructura. |
-| `02-gsp497/provider.tf` | Configuracion del provider. |
-| `02-gsp497/resources.tf` | Recursos de infraestructura y Monitoring. |
-| `02-gsp497/variables.tf` | Variables utilizadas en la configuracion. |
-| `02-gsp497/versions.tf` | Requisitos de version de Terraform. |
-| `02-gsp497/plan-inicial.txt` | Plan generado antes del despliegue. |
-| `02-gsp497/destroy.txt` | Registro de la eliminacion de recursos. |
+**¿Qué cambiaría?**
 
-**Evidencia de puntuacion:**
+Antes de ejecutar comandos automatizados como `make create`, revisaría qué instrucciones contienen los scripts y qué recursos van a modificar.
 
-![GSP497 - Resultado del laboratorio](evidencia/gsp497.png)
+**Resultado:** Completé GSP497 con 100/100 puntos. Se crearon y eliminaron correctamente los cinco recursos, y conservé el plan inicial, el registro de destrucción y las evidencias de monitoreo.
 
-**Dificultades:**
+### GSP345 — Build Infrastructure with Terraform on Google Cloud: Challenge Lab
 
-Se detecto que el comando `make create` ejecutaba internamente `terraform apply` mediante `scripts/create.sh`, lo que podia impedir guardar el plan de forma independiente antes del despliegue.
+**¿Qué hice?**
 
-Durante la preparacion se interrumpio una primera invocacion de `make create`. Posteriormente se confirmo que las variables de Terraform se habian generado.
+En este laboratorio trabajé con una infraestructura de Google Cloud que debía administrar mediante Terraform. A diferencia de los laboratorios anteriores, tuve que completar varias tareas relacionadas entre sí.
 
-**Soluciones aplicadas:**
+Primero preparé la estructura del proyecto con `main.tf`, `variables.tf` y los módulos `instances` y `storage`. Configuré el proveedor de Google con la versión `~> 6.0`.
 
-Se revisaron el Makefile y `scripts/create.sh`, se inicializo Terraform y se genero `plan-inicial.txt` antes de continuar con `make create`.
+Después consulté las características de dos máquinas virtuales existentes, `tf-instance-1` y `tf-instance-2`, y las importé a Terraform.
 
-Para la limpieza, se reviso `scripts/teardown.sh` y se conservo la salida del comando oficial mediante `tee`, sin modificar el script original.
+Para comprobar la importación utilicé:
 
-**Que cambiaria:**
+```bash
+terraform state list
+```
 
-Incluiría en el flujo de trabajo la generación automática de plan-inicial.txt antes del despliegue y de destroy.txt durante la limpieza. Esto permitiría mantener un registro completo de las operaciones sin depender de comandos adicionales y facilitaría la revisión de las evidencias.
+También guardé `plan-2.txt`. El plan mostró dos actualizaciones y ninguna destrucción.
 
-**Uso de IA**
+En la tercera tarea creé el bucket `tf-bucket-902618` y configuré un backend remoto de Cloud Storage, con el prefijo `terraform/state`, para almacenar el estado de Terraform.
 
-ChatGPT se utilizo para interpretar los scripts del proyecto, identificar el momento correcto para generar el plan, revisar los cinco recursos previstos y preparar el registro de destruccion.
+Luego cambié el tipo de las dos máquinas virtuales a `e2-standard-2` y creé una tercera instancia. Tuve que corregir su nombre porque Google Skills solicitaba `tf-instance-715496`. Después retiré esa instancia de la configuración y apliqué su destrucción.
 
-Las operaciones de despliegue, validacion, Monitoring y destruccion fueron realizadas por el estudiante en Google Cloud.
+En la sexta tarea utilicé un módulo del Terraform Registry, versión `10.0.0`, para crear la red `tf-vpc-605465` y dos subredes:
 
-Las capturas y los registros utilizados proceden de la sesion real del laboratorio.
+- `subnet-01`: `10.10.10.0/24`.
+- `subnet-02`: `10.10.20.0/24`.
 
-### GSP345 - Terraform Challenge Lab
+Después asocié las dos máquinas existentes a las subredes correspondientes y comprobé que Terraform no indicara su recreación.
 
-**Actividades:** Pendiente.
+Por último, configuré la regla `tf-firewall` para permitir tráfico TCP por el puerto 80, tal como solicitaba el laboratorio.
 
-**Dificultades:** Pendiente.
+En cada etapa guardé el archivo de plan correspondiente antes de aplicar los cambios.
 
-**Que cambiaria:** Pendiente.
+**¿Qué me costó?**
+
+Lo más complicado fue entender cómo importar recursos existentes sin volver a crearlos y cómo interpretar los cambios que mostraba Terraform.
+
+También tuve dificultades con el nombre de la tercera máquina virtual y con el nombre exacto de la VPC, porque ambos debían coincidir con los valores indicados por Google Skills.
+
+Otro punto nuevo fue configurar el backend remoto y entender la diferencia entre quitar un recurso del archivo `.tf`, retirarlo del estado y destruirlo realmente.
+
+**¿Qué cambiaría?**
+
+Revisaría con más cuidado todos los nombres que aparecen en el enunciado antes de crear los recursos.
+
+También guardaría una copia de los archivos `.tf` en cada etapa, además de los planes, para poder comparar con mayor facilidad los cambios realizados durante el laboratorio.
+
+**Resultado:** Completé las siete tareas de GSP345 y obtuve 100/100 puntos. Guardé los archivos Terraform, los planes de ejecución y la captura del resultado final.
 
 ## Uso de IA
 
-Durante el desarrollo del LAB-05 se utilizó ChatGPT como herramienta de apoyo para interpretar instrucciones, analizar comandos de Terraform, resolver dificultades técnicas y organizar las evidencias solicitadas.
+Utilicé ChatGPT como apoyo para comprender algunos comandos, revisar los planes de Terraform y resolver los problemas que aparecieron durante los laboratorios.
 
-La herramienta no ejecutó directamente los laboratorios. Las operaciones en Google Cloud Shell, las comprobaciones en Google Cloud Console y la recopilación de evidencias fueron realizadas por el estudiante.
-
-### GSP233 — Terraform en Google Cloud
+### GSP233
 
 **¿Qué le pedí?**
 
-- Interpretar las instrucciones del laboratorio GSP233 y determinar cómo cumplir los requisitos adicionales del profesor.
-- Explicar el funcionamiento de los comandos `terraform init`, `terraform plan` y `terraform apply`.
-- Ayudar a identificar por qué Cloud Shell no reconocía correctamente el proyecto de Google Cloud.
-- Indicar cómo generar el plan inicial antes de aplicar los cambios.
-- Orientar la validación del clúster GKE y del servicio NGINX.
-- Organizar los archivos Terraform, las capturas y la bitácora del laboratorio.
+- Ayuda para entender la estructura de los archivos Terraform.
+- Explicación de los recursos que se crearían en Google Cloud.
+- Orientación para generar el plan antes del despliegue.
+- Ayuda para verificar que el servicio NGINX funcionara correctamente.
+- Indicaciones para organizar las evidencias.
 
 **¿Qué me dio?**
 
-ChatGPT explicó el orden de ejecución de Terraform y proporcionó comandos para inicializar el proyecto, revisar su configuración y conservar el plan de infraestructura.
+ChatGPT me explicó la función de los archivos principales y cómo utilizar los comandos básicos de Terraform.
 
-Entre los comandos revisados se encuentran:
+Entre los comandos utilizados estuvieron:
 
 ```bash
-gcloud config get-value project
-gcloud config set project PROJECT_ID
 terraform init
 terraform plan
 terraform apply
 ```
 
-También explicó cómo interpretar el resumen del plan, diferenciando los recursos que se crearían, modificarían o destruirían.
-
-Finalmente, orientó la organización de las evidencias dentro de `lab-05/01-gsp233/` y `lab-05/evidencia/`.
+También me orientó para comprobar el servicio de Kubernetes y revisar la respuesta de NGINX.
 
 **¿Qué corregí?**
 
-- Detecté que los enlaces de GSP233 y GSP497 se habían confundido inicialmente, por lo que verifiqué el laboratorio correcto.
-- Configuré manualmente el Project ID cuando comprobé que Cloud Shell no lo tenía establecido.
-- Repetí GSP233 en una nueva sesión después de que terminara la primera.
-- Revisé el plan de Terraform antes de confirmar el despliegue.
-- Verifiqué personalmente el clúster GKE y el acceso al servicio NGINX.
-- Conservé las capturas originales y registré la puntuación real de 100/100.
+- Revisé la configuración antes de aplicar los cambios.
+- Comprobé que el plan correspondiera a los recursos del laboratorio.
+- Verifiqué la IP externa y la respuesta de NGINX.
+- Organicé las capturas y los archivos de evidencia.
 
-**Resultado:** GSP233 se completó satisfactoriamente y se conservaron los archivos Terraform, el plan inicial y las evidencias del laboratorio.
+**Resultado:** Pude completar el despliegue y comprender mejor cómo Terraform administra recursos de Kubernetes.
 
-### GSP497 — Cloud Operations for GKE
+### GSP497
 
 **¿Qué le pedí?**
 
-- Revisar el procedimiento de GSP497 e identificar el momento correcto para generar `plan-inicial.txt`.
-- Analizar el funcionamiento de `make create`, ya que este comando ejecutaba Terraform automáticamente.
-- Ayudar a interpretar el plan y comprobar que no existieran destrucciones imprevistas.
-- Explicar cómo verificar el despliegue utilizando `make validate`.
-- Identificar la evidencia adecuada de Google Cloud Monitoring.
-- Analizar `scripts/teardown.sh` para registrar la destrucción de recursos sin modificar el script original.
-- Indicar cómo organizar los archivos y documentar los resultados en el README.
+- Revisar el procedimiento de GSP497 e identificar cuándo generar `plan-inicial.txt`.
+- Explicar qué hacía `make create` antes de ejecutarlo.
+- Ayudarme a interpretar el plan de Terraform.
+- Explicar cómo comprobar la aplicación con `make validate`.
+- Ayudarme a identificar la evidencia de Cloud Monitoring.
+- Revisar cómo registrar la eliminación de recursos con `make teardown`.
+- Orientarme para organizar las evidencias.
 
 **¿Qué me dio?**
 
-ChatGPT ayudó a interpretar `scripts/create.sh` y a identificar que `make create` ejecutaba internamente `terraform init` y `terraform apply`.
+ChatGPT me explicó que `make create` ejecutaba Terraform automáticamente y me recomendó generar el plan por separado para conservarlo antes del despliegue.
 
-Para generar y conservar el plan antes del despliegue, proporcionó los siguientes comandos:
+Utilicé:
 
 ```bash
 cd ~/gke-monitoring-tutorial/terraform
+
 terraform init -input=false
 terraform plan -input=false -no-color > plan-inicial.txt 2>&1
 grep -E 'Plan:|Error:' plan-inicial.txt
 ```
 
-El plan obtenido indicó:
+El plan mostró cinco recursos por crear y ninguna destrucción.
 
-```text
-Plan: 5 to add, 0 to change, 0 to destroy.
-```
-
-Posteriormente, se utilizaron los comandos oficiales para desplegar y validar la infraestructura:
+Después utilicé los comandos del laboratorio:
 
 ```bash
 cd ~/gke-monitoring-tutorial
+
 make create
 make validate
 ```
 
-La validación devolvió el mensaje `App is deployed.`
-
-Para documentar la limpieza, ChatGPT propuso ejecutar el comando oficial y guardar simultáneamente su salida:
+Para registrar la limpieza de recursos, ChatGPT me indicó:
 
 ```bash
 make teardown 2>&1 | tee terraform/destroy.txt
 ```
 
-Finalmente, se comprobó el resultado:
+Finalmente comprobé la salida:
 
 ```bash
 grep -E 'Destroy complete!|Error:' terraform/destroy.txt
 ```
 
-La salida confirmó:
+**¿Qué corregí?**
 
-```text
-Destroy complete! Resources: 5 destroyed.
+- Interrumpí una primera ejecución de `make create` para guardar el plan antes del despliegue.
+- Revisé el funcionamiento de los scripts.
+- Comprobé que Terraform creara cinco recursos sin destrucciones.
+- Verifiqué que la aplicación estuviera desplegada.
+- Seleccioné la captura de Cloud Monitoring que mostraba las métricas solicitadas.
+- Comprobé que `make teardown` eliminara los cinco recursos.
+
+**Resultado:** Aprendí a revisar comandos automatizados, conservar planes y comprobar la creación y eliminación de infraestructura.
+
+### GSP345
+
+**¿Qué le pedí?**
+
+- Ayuda para organizar los módulos y archivos de Terraform.
+- Explicación de cómo importar máquinas virtuales existentes.
+- Apoyo para revisar los planes antes de aplicar cambios.
+- Orientación para configurar un backend remoto.
+- Ayuda para corregir errores en los nombres de los recursos.
+- Explicación sobre el uso de módulos del Terraform Registry.
+- Ayuda para verificar las subredes y el firewall.
+- Indicaciones para guardar los archivos y las evidencias.
+
+**¿Qué me dio?**
+
+ChatGPT me ayudó a preparar las configuraciones de Terraform y me explicó comandos que no había utilizado en los laboratorios anteriores.
+
+Uno de ellos fue `terraform import`, que permite incorporar recursos existentes al estado:
+
+```bash
+terraform import \
+  module.instances.google_compute_instance.tf_instance_1 \
+  projects/qwiklabs-gcp-00-48c6309041bd/zones/us-east1-b/instances/tf-instance-1
 ```
+
+También utilicé:
+
+```bash
+terraform state list
+```
+
+Este comando me permitió comprobar qué recursos estaban registrados en el estado de Terraform.
+
+Para guardar y revisar los planes utilicé:
+
+```bash
+terraform plan -input=false -no-color > plan-2.txt 2>&1
+
+grep -E 'Plan:|Error:|must be replaced' plan-2.txt
+```
+
+Con estos comandos pude comprobar si Terraform iba a crear, modificar, destruir o reemplazar recursos.
+
+En la tarea del backend remoto aprendí a utilizar:
+
+```bash
+terraform init -migrate-state
+```
+
+También conocí `terraform state rm`, que elimina la asociación de un recurso con el estado de Terraform, pero no destruye el recurso de Google Cloud.
+
+Para la creación de la VPC, ChatGPT me orientó sobre cómo utilizar un módulo del Terraform Registry y fijar su versión en `10.0.0`.
+
+Finalmente, me ayudó a verificar la regla de firewall con:
+
+```bash
+gcloud compute firewall-rules describe tf-firewall \
+  --format="yaml(name,network,direction,allowed,sourceRanges)"
+```
+
+Este comando permitió comprobar que la regla estaba asociada a la red correcta y permitía el puerto TCP 80.
 
 **¿Qué corregí?**
 
-- Interrumpí una primera ejecución de `make create` al identificar que podía comenzar el despliegue sin haber conservado previamente el plan inicial.
-- Comprobé que `terraform.tfvars` se había generado y después ejecuté `terraform init` y `terraform plan` de manera independiente.
-- Revisé que el plan correspondiera al proyecto temporal correcto y contemplara cinco recursos nuevos, sin modificaciones ni destrucciones.
-- Ejecuté nuevamente `make create` y validé la aplicación desplegada.
-- Verifiqué personalmente la política `Prometheus mem alloc` y seleccioné la captura que mostraba sus métricas.
-- Revisé el contenido de `scripts/teardown.sh` antes de ejecutar la limpieza.
-- Conservé el registro auténtico de `terraform destroy`, confirmando la eliminación de los cinco recursos.
-- Organicé los archivos Terraform y las evidencias para incorporarlos al repositorio.
+- Revisé las características reales de las máquinas virtuales antes de importarlas.
+- Comprobé los planes para evitar recreaciones no previstas.
+- Corregí el nombre del bucket cuando interrumpí accidentalmente su configuración.
+- Verifiqué que el estado se conservara después de configurar el backend remoto.
+- Detecté que el nombre de la tercera instancia no coincidía con el solicitado y lo cambié a `tf-instance-715496`.
+- Revisé la diferencia entre retirar un recurso del estado y destruirlo.
+- Comprobé el nombre de la VPC y las direcciones de las dos subredes.
+- Verifiqué que el cambio de red no destruyera las máquinas existentes.
+- Comprobé la configuración final del firewall.
+- Organicé los archivos de configuración y las evidencias para entregarlos.
 
-**Resultado:** GSP497 se desplegó, validó y limpió correctamente. Se conservaron el plan inicial, el registro de destrucción y las evidencias de Cloud Monitoring.
-
-### GSP345 — Terraform Challenge Lab
-
-*Pendiente de documentar después de ejecutar el Challenge Lab.*
-
-### Consideraciones sobre el uso de IA
-
-Las respuestas de ChatGPT fueron contrastadas con los comandos ejecutados, los archivos Terraform y los resultados observados en Google Cloud.
-
-Se corrigieron las recomendaciones cuando no coincidían con el estado real del entorno o con las exigencias del laboratorio.
-
-No se utilizaron resultados simulados para sustituir evidencias. Las capturas, los planes y los registros corresponden a ejecuciones reales realizadas por el estudiante.
+**Resultado:** GSP345 me permitió practicar la importación de recursos, los cambios controlados de infraestructura, el uso de backends remotos y los módulos de Terraform Registry. Completé el laboratorio con 100/100 puntos.
