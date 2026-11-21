@@ -1,8 +1,8 @@
 FROM nginxinc/nginx-unprivileged:1.30-alpine3.24
 
 USER root
-RUN apk upgrade --no-cache brotli-libs
-
+RUN apk upgrade --no-cache && apk add --no-cache 'nginx>=1.30.7-r0'
+    
 COPY web/nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY index.html /usr/share/nginx/html/index.html
