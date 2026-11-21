@@ -1,6 +1,6 @@
 FROM alpine:3.24
 
-RUN apk add --no-cache nginx
+RUN apk add --no-cache nginx=1.30.7-r0
 
 COPY web/nginx.conf /etc/nginx/http.d/default.conf
 
